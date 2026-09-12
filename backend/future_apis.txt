@@ -1,0 +1,99 @@
+These APIs are planned for future development. They are NOT implemented yet and must NOT be created, modified, or added to the current backend unless explicitly requested later. This file is only a reference for future development.
+
+Total number of future APIs documented: 8
+
+
+1. Endpoint: GET /students/{student_id}/enrollments
+
+Purpose:
+Returns all enrollments for a single student (with course plan and course info). This lets a student see their current and past enrollments.
+
+Used By:
+Next.js frontend student dashboard, to show the student's enrolled courses and status.
+
+Status:
+Future — Not implemented
+
+
+2. Endpoint: GET /students
+
+Purpose:
+Returns a list of all students. Lets admins browse and search the full student list.
+
+Used By:
+Admin dashboard, to manage and review registered students.
+
+Status:
+Future — Not implemented
+
+
+3. Endpoint: GET /students/{student_id}
+
+Purpose:
+Returns a single student's details (name, email, phone, country, created_at). Lets admins inspect one student's profile.
+
+Used By:
+Admin dashboard, to view a specific student's information.
+
+Status:
+Future — Not implemented
+
+
+4. Endpoint: GET /enrollments
+
+Purpose:
+Returns a list of all enrollments. Lets admins see who is enrolled in which course plan, filter by status, and get an overview.
+
+Used By:
+Admin dashboard, to monitor all enrollments across courses.
+
+Status:
+Future — Not implemented
+
+
+5. Endpoint: PATCH /enrollments/{enrollment_id}
+
+Purpose:
+Updates an enrollment (e.g. change preferred time or status such as active, completed, cancelled). Lets admins keep enrollment records accurate.
+
+Used By:
+Admin dashboard, to edit or update the status of an enrollment.
+
+Status:
+Future — Not implemented
+
+
+6. Endpoint: DELETE /enrollments/{enrollment_id}
+
+Purpose:
+Removes or cancels an enrollment. Lets a student withdraw or an admin remove an unwanted enrollment.
+
+Used By:
+Student dashboard or admin dashboard, to cancel an enrollment.
+
+Status:
+Future — Not implemented
+
+
+7. Endpoint: GET /courses/search
+
+Purpose:
+Searches courses by keyword in name, description, or category. Lets visitors find courses without browsing the full list.
+
+Used By:
+Next.js frontend course listing page, to support a course search box.
+
+Status:
+Future — Not implemented
+
+
+8. Endpoint: POST /auth/login
+
+Purpose:
+Authenticates an admin (or student) and returns a session or token. Required before any protected admin endpoints can be used.
+
+Used By:
+Next.js frontend login page, and the admin dashboard to gate access.
+
+Status:
+Future — Not implemented

@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand color palette */
+  --brand-primary: #0f5132; /* Primary / Dark Green */
+  --brand-secondary: #198754; /* Secondary / Green */
+  --brand-gold: #d4a017; /* Accent Gold */
+  --brand-cream: #f5e6c8; /* Light Cream */
+  --brand-surface: #ffffff; /* Card Surface */
+  --brand-canvas: #fafaf7; /* Canvas Background */
+  --brand-line: #f3f4f6; /* Light Gray Border */
+  --brand-ink: #1f2933; /* Dark Text */
+
+  /* US EdTech color tokens */
+  --canvas: #f8fafc; /* Light Ice-Slate */
+  --card: #ffffff; /* Pure White */
+  --primary-slate: #0f172a; /* Deep Slate Navy */
+  --primary-teal: #0d9488; /* Bright Emerald Teal */
+  --hover-teal: #0f766e; /* Darker Teal */
+  --accent-gold: #f59e0b; /* Amber Gold */
+  --light-gold: #fef3c7; /* Subtle Gold Tint */
+  --body-slate: #334155; /* Charcoal Slate */
+  --border-slate: #e2e8f0; /* Light Slate Border */
+
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-primary: var(--brand-primary);
+  --color-secondary: var(--brand-secondary);
+  --color-gold: var(--brand-gold);
+  --color-cream: var(--brand-cream);
+  --color-surface: var(--brand-surface);
+  --color-canvas: var(--brand-canvas);
+  --color-line: var(--brand-line);
+  --color-ink: var(--brand-ink);
+  --color-card: var(--card);
+  --color-primary-slate: var(--primary-slate);
+  --color-primary-teal: var(--primary-teal);
+  --color-hover-teal: var(--hover-teal);
+  --color-accent-gold: var(--accent-gold);
+  --color-light-gold: var(--light-gold);
+  --color-body-slate: var(--body-slate);
+  --color-border-slate: var(--border-slate);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--brand-canvas);
+  color: var(--brand-ink);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* ------------------------------------------------------------------ */
+/* US EdTech light palette scope (used by /design-template only)        */
+/* Remaps the shared brand tokens for descendants of .uk-edtech, so     */
+/* other routes (e.g. /design-template-two) keep their original brand. */
+/* ------------------------------------------------------------------ */
+.uk-edtech {
+  --brand-primary: #0f172a; /* Deep Slate Navy */
+  --brand-secondary: #0d9488; /* Bright Emerald Teal */
+  --brand-gold: #f59e0b; /* Warm Amber Gold */
+  --brand-cream: #f5e6c8; /* kept as a warm accent */
+  --brand-surface: #ffffff; /* Pure White */
+  --brand-canvas: #f8fafc; /* Light Ice-Slate */
+  --brand-line: #e2e8f0; /* Subtle Slate Border */
+  --brand-ink: #334155; /* Charcoal Slate */
+}

@@ -1,0 +1,310 @@
+API Information
+===============
+
+This file documents every API endpoint currently implemented in the backend
+(FastAPI + SQLModel). It is for reference only; it does not affect the code.
+Total number of implemented APIs: 19
+
+Authentication
+--------------
+All endpoints prefixed with /admin require a Bearer token. Obtain one by
+calling POST /auth/login with the configured admin credentials and send it
+as:
+
+    Authorization: Bearer <access_token>
+
+Requests without a valid token return 401. The remaining public endpoints
+(catalog, enrollment, chat) do not require a token.
+
+
+1. Endpoint: GET /health
+
+Purpose:
+Health-check endpoint used to confirm the backend server is running and
+responding. Returns {"status": "ok"}.
+
+Used By:
+DevOps / deployment monitoring, or anyone verifying the server is alive.
+
+---
+
+2. Endpoint: GET /courses
+
+Purpose:
+Returns a list of all courses (id, name, description, category) from the
+database. This powers the course listing page so visitors can see what
+courses are offered. Embeddings are not returned.
+
+Used By:
+Next.js frontend course listing page.
+
+---
+
+3. Endpoint: GET /courses/search
+
+Purpose:
+Searches the course catalog semantically. Required query param `q` is
+embedded (Gemini) and matched against the stored course vectors with
+pgvector cosine distance, so results are the most relevant courses rather
+than only exact name matches. Optional `limit` (default 10, 1-50) caps the
+number of results. Returns the same CourseRead shape as GET /courses.
+Returns 422 if `q` is missing or blank.
+
+Used By:
+Next.js frontend course listing page (search box).
+
+---
+
+4. Endpoint: GET /courses/{course_id}
+
+Purpose:
+Returns a single course's details (id, name, description, category) together
+with all of its course plans (id, days_per_week, fee, currency). This lets
+the frontend show a specific course and the pricing/plan options available
+for it. Returns 404 if the course does not exist.
+
+Used By:
+Next.js frontend course detail page, and the enrollment form (to display
+the plan options and prices for the selected course).
+
+---
+
+5. Endpoint: POST /enrollments
+
+Purpose:
+Handles the enrollment form submission. The user selects a course plan and
+provides their student details (name, email, phone, country) plus an
+optional preferred time. The API finds or creates the student by email (one
+student per email), then creates an enrollment record linking that student
+to the selected course plan. Every new enrollment starts with status
+`on_trial`. Returns 404 if the course plan does not exist and 409 if the
+student is already enrolled in that course plan. Returns the created
+enrollment with the student and course plan information.
+
+Used By:
+The website's enrollment form (Next.js frontend). This is the main entry
+point for a user enrolling in a course.
+
+---
+
+6. Endpoint: GET /enrollments/{enrollment_id}
+
+Purpose:
+Returns a single enrollment record (student info + course plan info). Used to
+look up or confirm a specific enrollment. Returns 404 if the enrollment does
+not exist.
+
+Used By:
+Next.js frontend (e.g. confirmation page after enrollment).
+
+---
+
+7. Endpoint: POST /chat
+
+Purpose:
+Admission Agent chat endpoint. Sends the user message together with the
+conversation history to Groq with six available tools (search_courses,
+get_course_details, get_course_fee, get_trial_info, get_registration_link,
+route_to_whatsapp), executing any tool calls until a final natural-language
+reply is produced. Request body: {"message": "...", "conversation_id": null}.
+When conversation_id is omitted a new conversation is created; otherwise the
+message is appended to that conversation (404 if it does not exist). Returns
+{"reply": "...", "conversation_id": N}. Messages are persisted; the bot
+replies in the language the user writes (English / Urdu / Roman Urdu).
+Returns 422 for a blank message and 503 if the AI service is not configured.
+
+Used By:
+Next.js frontend chat widget (visitor-facing admission assistant).
+
+---
+
+8. Endpoint: POST /auth/login
+
+Purpose:
+Authenticates the admin with {"username": "...", "password": "..."} and, on
+success, returns {"access_token": "...", "token_type": "bearer"}. The token
+expires after 8 hours and must be sent as a Bearer token on protected
+endpoints. Returns 401 with a generic message if credentials are invalid.
+Not protected itself.
+
+Used By:
+Next.js frontend admin login page.
+
+---
+
+9. Endpoint: GET /admin/summary
+
+Purpose:
+Dashboard summary. Returns total student count, total enrollment count, and
+enrollment counts broken down by each status:
+{"total_students": N, "total_enrollments": N, "by_status":
+{"on_trial": N, "active": N, "cancelled": N, "alumni": N}}.
+
+Used By:
+Admin dashboard header / stats cards.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+10. Endpoint: GET /admin/enrollments
+
+Purpose:
+Returns every enrollment (not paginated) with admin detail: id, student
+(name, email), course + plan info (course name, days_per_week, fee,
+currency), status, enrolled_at, preferred_time. Optional query param
+`status` filters to a single status (on_trial, active, cancelled, alumni);
+an unrecognized value returns 422.
+
+Used By:
+Admin dashboard enrollments table, with status filtering.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+11. Endpoint: PATCH /admin/enrollments/{enrollment_id}/status
+
+Purpose:
+Updates an enrollment's status. Request body: {"status": "on_trial" |
+"active" | "cancelled" | "alumni"}. The change is validated against the
+allowed lifecycle transitions (on_trial -> active/cancelled, active ->
+alumni/cancelled; cancelled and alumni are terminal). An invalid transition
+(e.g. alumni -> on_trial) returns 400 with a message stating the current
+status and the allowed transitions (or that the status is terminal).
+Returns 404 if the enrollment does not exist, 422 for an unknown status
+value, and 200 with the updated enrollment on success.
+
+Used By:
+Admin dashboard to move an enrollment through its lifecycle (trial to
+active, cancel, mark alumni).
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+12. Endpoint: DELETE /admin/enrollments/{enrollment_id}
+
+Purpose:
+Deletes an enrollment. Returns 204 on success and 404 if the enrollment does
+not exist.
+
+Used By:
+Admin dashboard to remove an enrollment.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+13. Endpoint: GET /admin/students
+
+Purpose:
+Returns all students (id, name, email, phone, country, created_at), the full
+list, not paginated, ordered by id.
+
+Used By:
+Admin dashboard students table.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+14. Endpoint: PATCH /admin/students/{student_id}
+
+Purpose:
+Partially updates a student. Request body may contain any of: name, email,
+phone, country — only supplied fields are changed; omitted fields keep their
+current value. Emails are trimmed + lower-cased and format-checked, and must
+not belong to another student (returns 409 with a clear message otherwise).
+Returns 404 if the student does not exist, 422 for a blank/null name, an
+invalid email, or a null email, and 200 with the updated student on success.
+
+Used By:
+Admin dashboard to edit a student's contact details.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+15. Endpoint: DELETE /admin/students/{student_id}
+
+Purpose:
+Deletes a student. If the student has any enrollments the delete would
+violate the enrollments foreign key, so instead of a raw DB error it returns
+409 explaining that the student has existing enrollments which must be
+removed or reassigned first. Returns 404 if the student does not exist and
+204 on success when no enrollments block the deletion.
+
+Used By:
+Admin dashboard to remove a student record.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+16. Endpoint: GET /admin/conversations
+
+Purpose:
+Returns all chat conversations (id, started_at, last_message_at) with a
+count of the messages in each, ordered by last_message_at descending (most
+recent activity first).
+
+Used By:
+Admin dashboard chat-logs list.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+17. Endpoint: GET /admin/conversations/{conversation_id}/messages
+
+Purpose:
+Returns all messages for one conversation in chronological order (id, role,
+content, tool_called, registration_link_given, routed_to_whatsapp,
+created_at). Returns 404 if the conversation does not exist.
+
+Used By:
+Admin dashboard to read a visitor's chat transcript.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+18. Endpoint: DELETE /admin/conversations/{conversation_id}
+
+Purpose:
+Deletes a conversation and all of its messages (the messages are deleted
+first, respecting the foreign key from messages to conversations). Returns
+404 if the conversation does not exist and 204 on success.
+
+Used By:
+Admin dashboard to remove a chat log.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+19. Endpoint: GET /admin/analytics/course-enrollments
+
+Purpose:
+Returns enrollment counts grouped by course (course_id, course_name,
+enrollment_count), ordered from the most-enrolled course to the least
+(ties broken by course name A-Z). Every enrollment counts regardless of
+status (on_trial, active, cancelled and alumni all count), so this is
+all-time interest in each course.
+
+Used By:
+Admin dashboard analytics (popular courses).
+
+Auth:
+Requires a valid admin Bearer token.
