@@ -56,6 +56,29 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
+/* Under-construction backdrop: soft brand gradient over a subtle      */
+/* Islamic 8-point star (khatim) lattice.                              */
+/* ------------------------------------------------------------------ */
+.construction-bg {
+  background-color: var(--brand-canvas);
+  background-image:
+    radial-gradient(
+      ellipse 80% 60% at 50% -10%,
+      rgba(25, 135, 84, 0.12),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 70% 60% at 110% 110%,
+      rgba(212, 160, 23, 0.1),
+      transparent 70%
+    ),
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='60'%20height='60'%20viewBox='0%200%2060%2060'%3E%3Cg%20fill='none'%20stroke='%230f5132'%20stroke-opacity='0.08'%20stroke-width='1'%3E%3Crect%20x='15'%20y='15'%20width='30'%20height='30'/%3E%3Crect%20x='15'%20y='15'%20width='30'%20height='30'%20transform='rotate(45%2030%2030)'/%3E%3Crect%20x='-15'%20y='-15'%20width='30'%20height='30'/%3E%3Crect%20x='-15'%20y='-15'%20width='30'%20height='30'%20transform='rotate(45%200%200)'/%3E%3Crect%20x='45'%20y='-15'%20width='30'%20height='30'/%3E%3Crect%20x='45'%20y='-15'%20width='30'%20height='30'%20transform='rotate(45%2060%200)'/%3E%3Crect%20x='-15'%20y='45'%20width='30'%20height='30'/%3E%3Crect%20x='-15'%20y='45'%20width='30'%20height='30'%20transform='rotate(45%200%2060)'/%3E%3Crect%20x='45'%20y='45'%20width='30'%20height='30'/%3E%3Crect%20x='45'%20y='45'%20width='30'%20height='30'%20transform='rotate(45%2060%2060)'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: auto, auto, 60px 60px;
+  background-position: center, center, center;
+}
+
+/* ------------------------------------------------------------------ */
 /* US EdTech light palette scope (used by /design-template only)        */
 /* Remaps the shared brand tokens for descendants of .uk-edtech, so     */
 /* other routes (e.g. /design-template-two) keep their original brand. */
