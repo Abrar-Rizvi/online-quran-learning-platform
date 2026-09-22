@@ -11,9 +11,10 @@ from .admin import (
 )
 from .auth import LoginRequest, TokenResponse
 from .chat import ChatRequest, ChatResponse
-from .course import CourseDetail, CoursePlanRead, CourseRead
+from .course import CourseDetail, CoursePlanRead, CourseRead, FeePlanRead
 from .enrollment import EnrollmentCreate, EnrollmentRead
 from .student import StudentRead
+from .trial_request import TrialRequestCreate, TrialRequestRead
 
 __all__ = [
     "AdminEnrollmentRead",
@@ -26,6 +27,7 @@ __all__ = [
     "CourseEnrollmentCount",
     "CoursePlanRead",
     "CourseRead",
+    "FeePlanRead",
     "EnrollmentCreate",
     "EnrollmentRead",
     "EnrollmentStatusCounts",
@@ -35,4 +37,6 @@ __all__ = [
     "StudentRead",
     "StudentUpdate",
     "TokenResponse",
+    "TrialRequestCreate",
+    "TrialRequestRead",
 ]

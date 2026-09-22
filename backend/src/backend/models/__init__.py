@@ -11,9 +11,11 @@ from .enrollment import (
 )
 from .message import Message
 from .student import Student
+from .trial_request import DEFAULT_TRIAL_REQUEST_STATUS, TrialRequest
 
 __all__ = [
     "DEFAULT_ENROLLMENT_STATUS",
+    "DEFAULT_TRIAL_REQUEST_STATUS",
     "STATUS_TRANSITIONS",
     "VALID_ENROLLMENT_STATUSES",
     "Conversation",
@@ -23,5 +25,6 @@ __all__ = [
     "EnrollmentStatus",
     "Message",
     "Student",
+    "TrialRequest",
     "can_transition",
 ]

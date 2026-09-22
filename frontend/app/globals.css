@@ -1,95 +1,310 @@
 @import "tailwindcss";
 
+/* ================================================================
+   DESIGN TOKENS — Adan Online Academy
+   Single source of truth. Every UI element references these tokens.
+   ================================================================ */
+
 :root {
-  /* Brand color palette */
-  --brand-primary: #0f5132; /* Primary / Dark Green */
-  --brand-secondary: #198754; /* Secondary / Green */
-  --brand-gold: #d4a017; /* Accent Gold */
-  --brand-cream: #f5e6c8; /* Light Cream */
-  --brand-surface: #ffffff; /* Card Surface */
-  --brand-canvas: #fafaf7; /* Canvas Background */
-  --brand-line: #f3f4f6; /* Light Gray Border */
-  --brand-ink: #1f2933; /* Dark Text */
+  color-scheme: light;
 
-  /* US EdTech color tokens */
-  --canvas: #f8fafc; /* Light Ice-Slate */
-  --card: #ffffff; /* Pure White */
-  --primary-slate: #0f172a; /* Deep Slate Navy */
-  --primary-teal: #0d9488; /* Bright Emerald Teal */
-  --hover-teal: #0f766e; /* Darker Teal */
-  --accent-gold: #f59e0b; /* Amber Gold */
-  --light-gold: #fef3c7; /* Subtle Gold Tint */
-  --body-slate: #334155; /* Charcoal Slate */
-  --border-slate: #e2e8f0; /* Light Slate Border */
+  /* ── Brand greens ─────────────────────────────────────────────── */
+  --green-950: #062A21;
+  --green-900: #08352A;
+  --green-800: #0C4A38;
+  --green-700: #0F5C45;
+  --green-500: #1F7A5C;
+  --green-200: #B9DCCB;
+  --green-100: #DCEDE5;
+  --green-50: #EEF6F2;
 
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Accent golds ─────────────────────────────────────────────── */
+  --gold-700: #8A6412;
+  --gold-600: #A87B1F;
+  --gold-500: #C39433;
+  --gold-400: #D8B15A;
+  --gold-300: #E6C98A;
+  --gold-50: #FBF5E6;
+
+  /* ── Neutrals ─────────────────────────────────────────────────── */
+  --bg: #F7F9F7;
+  --surface: #FFFFFF;
+  --surface-alt: #EDF2EE;
+  --border: #DFE5E0;
+  --border-strong: #7D8680;
+  --text: #1C2421;
+  --text-muted: #56615C;
+
+  /* ── Status ───────────────────────────────────────────────────── */
+  --success: #146C43;
+  --success-bg: #ECF7F0;
+  --error: #B42318;
+  --error-bg: #FEF3F2;
+  --warning: #93370D;
+  --warning-bg: #FFF6E5;
+  --info: #1B5E8C;
+  --info-bg: #EEF5FB;
+
+  /* ── Semantic aliases ─────────────────────────────────────────── */
+  --color-primary: var(--green-700);
+  --color-primary-hover: var(--green-800);
+  --color-primary-foreground: #FFFFFF;
+  --color-accent: var(--gold-600);
+  --color-focus: var(--green-500);
+
+  /* ── Radius ───────────────────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ──────────────────────────────────────────────────── */
+  --shadow-card-hover: 0 14px 30px -18px rgb(8 53 42 / 0.35);
+  --shadow-floating: 0 24px 50px -30px rgb(8 53 42 / 0.45);
+
+  /* ── Container ────────────────────────────────────────────────── */
+  --container-max: 1200px;
+  --container-px: 20px;
+
+  /* ── Contextual tokens (overridden by [data-tone="dark"]) ───── */
+  --heading-color: var(--green-900);
+  --body-muted-color: var(--text-muted);
+  --eyebrow-color: var(--gold-700);
+  --link-color: var(--green-700);
+  --link-hover-color: var(--green-800);
+  --focus-ring-color: var(--green-500);
+
+  --btn-primary-bg: var(--green-700);
+  --btn-primary-fg: #FFFFFF;
+  --btn-primary-hover: var(--green-800);
+  --btn-primary-active: var(--green-900);
+  --btn-secondary-bg: var(--surface);
+  --btn-secondary-fg: var(--green-800);
+  --btn-secondary-border: var(--green-700);
+  --btn-secondary-hover: var(--green-50);
+  --btn-secondary-active: var(--green-100);
+  --btn-ghost-fg: var(--green-700);
+  --btn-ghost-hover: var(--green-50);
+  --btn-ghost-active: var(--green-100);
+  --btn-link-fg: var(--green-700);
+  --btn-link-hover-fg: var(--green-800);
+
+  /* ── Fonts (set by next/font in layout.tsx) ───────────────────── */
+  /* --font-heading, --font-body, --font-arabic */
 }
+
+/* ── Dark tone context ────────────────────────────────────────── */
+
+[data-tone="dark"] {
+  --heading-color: #FFFFFF;
+  --body-muted-color: var(--green-200);
+  --eyebrow-color: var(--gold-400);
+  --link-color: var(--green-200);
+  --link-hover-color: #FFFFFF;
+  --focus-ring-color: var(--gold-300);
+
+  --btn-primary-bg: var(--gold-400);
+  --btn-primary-fg: var(--green-950);
+  --btn-primary-hover: var(--gold-300);
+  --btn-primary-active: var(--gold-500);
+  --btn-secondary-bg: transparent;
+  --btn-secondary-fg: #FFFFFF;
+  --btn-secondary-border: var(--green-200);
+  --btn-secondary-hover: var(--green-800);
+  --btn-secondary-active: var(--green-700);
+  --btn-ghost-fg: var(--green-200);
+  --btn-ghost-hover: var(--green-800);
+  --btn-ghost-active: var(--green-700);
+  --btn-link-fg: var(--green-200);
+  --btn-link-hover-fg: #FFFFFF;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --container-px: 32px;
+  }
+}
+
+/* ================================================================
+   TAILWIND v4 THEME — expose tokens as utility classes
+   ================================================================ */
 
 @theme inline {
-  --color-primary: var(--brand-primary);
-  --color-secondary: var(--brand-secondary);
-  --color-gold: var(--brand-gold);
-  --color-cream: var(--brand-cream);
-  --color-surface: var(--brand-surface);
-  --color-canvas: var(--brand-canvas);
-  --color-line: var(--brand-line);
-  --color-ink: var(--brand-ink);
-  --color-card: var(--card);
-  --color-primary-slate: var(--primary-slate);
-  --color-primary-teal: var(--primary-teal);
-  --color-hover-teal: var(--hover-teal);
-  --color-accent-gold: var(--accent-gold);
-  --color-light-gold: var(--light-gold);
-  --color-body-slate: var(--body-slate);
-  --color-border-slate: var(--border-slate);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Greens */
+  --color-green-950: var(--green-950);
+  --color-green-900: var(--green-900);
+  --color-green-800: var(--green-800);
+  --color-green-700: var(--green-700);
+  --color-green-500: var(--green-500);
+  --color-green-200: var(--green-200);
+  --color-green-100: var(--green-100);
+  --color-green-50: var(--green-50);
+
+  /* Golds */
+  --color-gold-700: var(--gold-700);
+  --color-gold-600: var(--gold-600);
+  --color-gold-500: var(--gold-500);
+  --color-gold-400: var(--gold-400);
+  --color-gold-300: var(--gold-300);
+  --color-gold-50: var(--gold-50);
+
+  /* Neutrals */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+
+  /* Status */
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+
+  /* Semantic */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-accent: var(--color-accent);
+  --color-focus: var(--color-focus);
+
+  /* Radius */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  /* Breakpoints */
+  --breakpoint-nav: 1140px;
+
+  /* Fonts */
+  --font-heading: var(--font-heading), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-body), system-ui, -apple-system, sans-serif;
+  --font-arabic: var(--font-arabic), "Traditional Arabic", serif;
 }
+
+/* ================================================================
+   BASE STYLES
+   ================================================================ */
 
 body {
-  background: var(--brand-canvas);
-  color: var(--brand-ink);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
 }
 
-/* ------------------------------------------------------------------ */
-/* Under-construction backdrop: soft brand gradient over a subtle      */
-/* Islamic 8-point star (khatim) lattice.                              */
-/* ------------------------------------------------------------------ */
+@media (min-width: 1024px) {
+  body {
+    font-size: 18px;
+  }
+}
+
+/* ── Heading typography ─────────────────────────────────────────── */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), Georgia, "Times New Roman", serif;
+  text-wrap: balance;
+  line-height: 1.2;
+  color: var(--heading-color);
+}
+
+h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* ── Arabic text ────────────────────────────────────────────────── */
+
+[lang="ar"] {
+  font-family: var(--font-arabic), "Traditional Arabic", serif;
+  direction: rtl;
+}
+
+/* ── Focus ring utility ─────────────────────────────────────────── */
+
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  outline: 3px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* ── Skip link ──────────────────────────────────────────────────── */
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  transform: translateY(-200%);
+  transition: transform 150ms ease-out;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ── Body scroll lock (mobile menu open) ───────────────────────── */
+
+body.menu-open {
+  overflow: hidden;
+}
+
+/* ================================================================
+   LEGACY — under-construction backdrop (kept until homepage replaces it)
+   ================================================================ */
+
 .construction-bg {
-  background-color: var(--brand-canvas);
+  background-color: var(--bg);
   background-image:
     radial-gradient(
       ellipse 80% 60% at 50% -10%,
-      rgba(25, 135, 84, 0.12),
+      rgb(15 92 69 / 0.10),
       transparent 70%
     ),
     radial-gradient(
       ellipse 70% 60% at 110% 110%,
-      rgba(212, 160, 23, 0.1),
+      rgb(195 148 51 / 0.08),
       transparent 70%
     ),
-    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='60'%20height='60'%20viewBox='0%200%2060%2060'%3E%3Cg%20fill='none'%20stroke='%230f5132'%20stroke-opacity='0.08'%20stroke-width='1'%3E%3Crect%20x='15'%20y='15'%20width='30'%20height='30'/%3E%3Crect%20x='15'%20y='15'%20width='30'%20height='30'%20transform='rotate(45%2030%2030)'/%3E%3Crect%20x='-15'%20y='-15'%20width='30'%20height='30'/%3E%3Crect%20x='-15'%20y='-15'%20width='30'%20height='30'%20transform='rotate(45%200%200)'/%3E%3Crect%20x='45'%20y='-15'%20width='30'%20height='30'/%3E%3Crect%20x='45'%20y='-15'%20width='30'%20height='30'%20transform='rotate(45%2060%200)'/%3E%3Crect%20x='-15'%20y='45'%20width='30'%20height='30'/%3E%3Crect%20x='-15'%20y='45'%20width='30'%20height='30'%20transform='rotate(45%200%2060)'/%3E%3Crect%20x='45'%20y='45'%20width='30'%20height='30'/%3E%3Crect%20x='45'%20y='45'%20width='30'%20height='30'%20transform='rotate(45%2060%2060)'/%3E%3C/g%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='60'%20height='60'%20viewBox='0%200%2060%2060'%3E%3Cg%20fill='none'%20stroke='%230F5C45'%20stroke-opacity='0.08'%20stroke-width='1'%3E%3Crect%20x='15'%20y='15'%20width='30'%20height='30'/%3E%3Crect%20x='15'%20y='15'%20width='30'%20height='30'%20transform='rotate(45%2030%2030)'/%3E%3Crect%20x='-15'%20y='-15'%20width='30'%20height='30'/%3E%3Crect%20x='-15'%20y='-15'%20width='30'%20height='30'%20transform='rotate(45%200%200)'/%3E%3Crect%20x='45'%20y='-15'%20width='30'%20height='30'/%3E%3Crect%20x='45'%20y='-15'%20width='30'%20height='30'%20transform='rotate(45%2060%200)'/%3E%3Crect%20x='-15'%20y='45'%20width='30'%20height='30'/%3E%3Crect%20x='-15'%20y='45'%20width='30'%20height='30'%20transform='rotate(45%200%2060)'/%3E%3Crect%20x='45'%20y='45'%20width='30'%20height='30'/%3E%3Crect%20x='45'%20y='45'%20width='30'%20height='30'%20transform='rotate(45%2060%2060)'/%3E%3C/g%3E%3C/svg%3E");
   background-repeat: no-repeat, no-repeat, repeat;
   background-size: auto, auto, 60px 60px;
   background-position: center, center, center;
 }
 
-/* ------------------------------------------------------------------ */
-/* US EdTech light palette scope (used by /design-template only)        */
-/* Remaps the shared brand tokens for descendants of .uk-edtech, so     */
-/* other routes (e.g. /design-template-two) keep their original brand. */
-/* ------------------------------------------------------------------ */
+/* ================================================================
+   LEGACY — UK EdTech scope (used by /design-template only)
+   ================================================================ */
+
 .uk-edtech {
-  --brand-primary: #0f172a; /* Deep Slate Navy */
-  --brand-secondary: #0d9488; /* Bright Emerald Teal */
-  --brand-gold: #f59e0b; /* Warm Amber Gold */
-  --brand-cream: #f5e6c8; /* kept as a warm accent */
-  --brand-surface: #ffffff; /* Pure White */
-  --brand-canvas: #f8fafc; /* Light Ice-Slate */
-  --brand-line: #e2e8f0; /* Subtle Slate Border */
-  --brand-ink: #334155; /* Charcoal Slate */
+  --green-700: #0f172a;
+  --green-500: #0d9488;
+  --gold-600: #f59e0b;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #334155;
 }

@@ -9,6 +9,8 @@ from .routers import (
     chat_router,
     courses_router,
     enrollments_router,
+    fees_router,
+    trial_requests_router,
 )
 
 app = FastAPI(title="Online Quran Backend")
@@ -32,7 +34,9 @@ app.add_middleware(
 )
 
 app.include_router(courses_router)
+app.include_router(fees_router)
 app.include_router(enrollments_router)
+app.include_router(trial_requests_router)
 app.include_router(chat_router)
 app.include_router(auth_router)
 app.include_router(admin_router)

@@ -1,6 +1,7 @@
 """Seed the course_plans table from courses already in the database.
 
-For every course, creates two plans:
+For every course, creates three plans:
+  - 2 days/week (Weekend: Saturday & Sunday) -> $32.00 USD
   - 3 days/week -> $45.00 USD
   - 5 days/week -> $60.00 USD
 
@@ -19,6 +20,7 @@ from .db import engine
 from .models import Course, CoursePlan
 
 PLANS = [
+    (2, Decimal("32.00")),
     (3, Decimal("45.00")),
     (5, Decimal("60.00")),
 ]

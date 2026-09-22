@@ -22,5 +22,15 @@ class CoursePlanRead(SQLModel):
     currency: str
 
 
+class FeePlanRead(SQLModel):
+    model_config = {"from_attributes": True}
+
+    id: int
+    course_id: int
+    days_per_week: int
+    fee: Decimal
+    currency: str
+
+
 class CourseDetail(CourseRead):
     course_plans: list[CoursePlanRead] = []

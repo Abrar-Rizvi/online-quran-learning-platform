@@ -3,7 +3,7 @@ API Information
 
 This file documents every API endpoint currently implemented in the backend
 (FastAPI + SQLModel). It is for reference only; it does not affect the code.
-Total number of implemented APIs: 19
+Total number of implemented APIs: 20
 
 Authentication
 --------------
@@ -14,7 +14,7 @@ as:
     Authorization: Bearer <access_token>
 
 Requests without a valid token return 401. The remaining public endpoints
-(catalog, enrollment, chat) do not require a token.
+(catalog, enrollment, trial requests, chat) do not require a token.
 
 
 1. Endpoint: GET /health
@@ -308,3 +308,25 @@ Admin dashboard analytics (popular courses).
 
 Auth:
 Requires a valid admin Bearer token.
+
+---
+
+20. Endpoint: POST /trial-requests
+
+Purpose:
+Handles the "Book a Free Trial" form submission. Body: name, email and
+whatsapp (all required) plus an optional country. Creates one row in the
+trial_requests table (id, name, email, whatsapp, country, status,
+created_at) and returns it with status 201. Text fields are trimmed, the
+email is lower-cased, and a blank country is stored as null. Every new
+request starts with status `new`. This is a lightweight lead capture kept
+separate from students and enrollments: it collects no course or plan,
+does not find-or-create a student, and does not dedupe, so the same email
+may submit more than once. Returns 422 if name, email or whatsapp is
+missing or blank, or the email is malformed.
+
+Used By:
+Next.js frontend "Book a Free Trial" page (/book-free-trial).
+
+Auth:
+None (public endpoint). There is no rate limiting or spam protection yet.
