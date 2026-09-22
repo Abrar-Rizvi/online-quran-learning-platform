@@ -11,6 +11,11 @@ export const metadata: Metadata = {
     "Browse every live one-to-one Quran and Islamic studies course offered by Adan Online Academy.",
 };
 
+// This page throws (via fetchCoursesOrThrow) instead of catching, relying on error.tsx.
+// Without this, Next attempts to statically prerender it at build time, which fails the
+// whole build whenever the backend isn't reachable from the build environment.
+export const dynamic = "force-dynamic";
+
 export default async function CoursesPage() {
   const courses = await fetchCoursesOrThrow();
 
