@@ -28,30 +28,29 @@ export function Reveal({
       ? staggerIndex * revealTokens.stagger + delay
       : delay;
 
-  // Content is always visible — animation is progressive enhancement only.
-  if (prefersReduced) {
-    return (
-      <div ref={ref} className={className}>
-        {children}
-      </div>
-    );
-  }
-
+  // Always render the same motion.div: the server can't know the reduced-motion
+  // preference, so swapping in a plain <div> on the client left the SSR'd hidden
+  // inline style (opacity 0) in place after hydration. Under reduced motion the
+  // content is instead snapped to its visible state with a zero-duration transition.
   return (
     <motion.div
       ref={ref}
       className={className}
       initial={{ opacity: 0, y: revealTokens.distance }}
       animate={
-        isInView
+        isInView || prefersReduced
           ? { opacity: 1, y: 0 }
           : { opacity: 0, y: revealTokens.distance }
       }
-      transition={{
-        duration: duration.reveal,
-        ease: [...easing.easeOut],
-        delay: computedDelay,
-      }}
+      transition={
+        prefersReduced
+          ? { duration: 0 }
+          : {
+              duration: duration.reveal,
+              ease: [...easing.easeOut],
+              delay: computedDelay,
+            }
+      }
     >
       {children}
     </motion.div>

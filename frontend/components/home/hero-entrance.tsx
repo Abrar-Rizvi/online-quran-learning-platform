@@ -19,22 +19,24 @@ export function HeroFadeIn({
 }: HeroFadeInProps) {
   const prefersReduced = useReducedMotion();
 
-  if (prefersReduced) {
-    return <div className={className}>{children}</div>;
-  }
-
   const isImage = mode === "image";
 
+  // Same motion.div on server and client (see Reveal): a plain <div> swap under
+  // reduced motion kept the SSR'd hidden inline style after hydration.
   return (
     <motion.div
       className={className}
       initial={{ opacity: 0, ...(isImage ? { scale: 0.98 } : { y: revealTokens.distance }) }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        duration: isImage ? 0.4 : 0.35,
-        ease: [...easing.easeOut],
-        delay,
-      }}
+      transition={
+        prefersReduced
+          ? { duration: 0 }
+          : {
+              duration: isImage ? 0.4 : 0.35,
+              ease: [...easing.easeOut],
+              delay,
+            }
+      }
     >
       {children}
     </motion.div>

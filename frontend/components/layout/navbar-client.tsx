@@ -24,10 +24,12 @@ export function NavbarClient() {
     return () => window.removeEventListener("scroll", check);
   }, []);
 
-  /** Whether a nav link is active. Hash links are only active on "/". */
-  function isActive(href: string): boolean {
-    if (href.startsWith("/#")) return pathname === "/";
-    return pathname === href;
+  /**
+   * The link for the current route gets aria-current="page" (no visual pill — the
+   * pill is hover-only). In-page anchors like "/#fee" are never "current".
+   */
+  function isCurrent(href: string): boolean {
+    return !href.includes("#") && pathname === href;
   }
 
   return (
@@ -59,12 +61,8 @@ export function NavbarClient() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={cn(
-                    "rounded-[var(--radius-sm)] px-3 py-2 text-base font-medium transition-colors duration-150 focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2",
-                    isActive(link.href)
-                      ? "bg-[var(--green-100)] text-[var(--green-800)]"
-                      : "text-[var(--text)] hover:bg-[var(--green-50)] hover:text-[var(--green-700)]",
-                  )}
+                  aria-current={isCurrent(link.href) ? "page" : undefined}
+                  className="rounded-[var(--radius-sm)] px-3 py-2 text-base font-medium text-[var(--text)] transition-colors duration-150 hover:bg-[var(--green-50)] hover:text-[var(--green-700)] focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2"
                 >
                   {link.label}
                 </Link>

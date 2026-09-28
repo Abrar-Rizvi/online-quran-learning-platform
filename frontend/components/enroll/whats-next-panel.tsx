@@ -1,8 +1,12 @@
 import { Button } from "@/components/ui";
 import { getContactConfig, WHATSAPP_FALLBACK_URL } from "@/lib/site-config";
 
-/** Draft copy — mirrors the homepage's "How it Works" flow; confirm final wording with the academy. */
-const STEPS = [
+/**
+ * Draft copy — mirrors the homepage's "How it Works" flow; confirm final wording with the academy.
+ * Exported so the enrollment confirmation page can reuse the exact same post-submission copy
+ * (steps 2–3) instead of inventing new wording.
+ */
+export const ENROLLMENT_NEXT_STEPS = [
   "You submit this form and choose your plan.",
   "Our team reaches out to confirm your teacher and trial time.",
   "You receive a class link for your live session.",
@@ -39,7 +43,7 @@ export function WhatsNextPanel() {
       </h2>
 
       <ol className="mt-6 flex flex-col gap-5">
-        {STEPS.map((step, i) => (
+        {ENROLLMENT_NEXT_STEPS.map((step, i) => (
           <li key={step} className="flex items-start gap-3">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--green-100)] text-sm font-bold text-[var(--green-800)]">
               {i + 1}

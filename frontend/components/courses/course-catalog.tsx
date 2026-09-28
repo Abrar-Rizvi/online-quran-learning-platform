@@ -5,8 +5,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Reveal } from "@/components/ui";
 import { CourseCard } from "./course-card";
 import { CourseGridSkeleton } from "./course-skeleton";
-import { searchCourses, type CourseListItem } from "@/lib/api";
+import { CourseSearchError, searchCourses, type CourseListItem } from "@/lib/api";
 import { matchesCategory, toCategoryKey, type CategoryKey } from "@/lib/courses";
+import { inputClasses } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 const DEBOUNCE_MS = 300;
@@ -65,7 +66,7 @@ export function CourseCatalog({ initialCourses }: CourseCatalogProps) {
   }
 
   const [searchResults, setSearchResults] = useState<CourseListItem[]>([]);
-  const [searchError, setSearchError] = useState(false);
+  const [searchError, setSearchError] = useState<"busy" | "unavailable" | "error" | null>(null);
   /** The query the current searchResults/searchError actually belong to — lets "loading" be derived instead of set. */
   const [resolvedQuery, setResolvedQuery] = useState<string | null>(null);
 
@@ -80,12 +81,13 @@ export function CourseCatalog({ initialCourses }: CourseCatalogProps) {
     searchCourses(debouncedQuery, controller.signal)
       .then((results) => {
         setSearchResults(results);
-        setSearchError(false);
+        setSearchError(null);
         setResolvedQuery(debouncedQuery);
       })
       .catch((err) => {
         if (controller.signal.aborted) return;
-        setSearchError(true);
+        const status = err instanceof CourseSearchError ? err.status : 0;
+        setSearchError(status === 429 ? "busy" : status === 503 ? "unavailable" : "error");
         setResolvedQuery(debouncedQuery);
         if (process.env.NODE_ENV === "development") {
           console.warn("[course-catalog] Search failed:", err);
@@ -95,7 +97,7 @@ export function CourseCatalog({ initialCourses }: CourseCatalogProps) {
     return () => controller.abort();
   }, [debouncedQuery, isSearching]);
 
-  const searchErrorActive = isSearching && !searchLoading && searchError;
+  const searchErrorActive = isSearching && !searchLoading && searchError !== null;
 
   const displayedCourses = isSearching
     ? searchResults
@@ -116,8 +118,9 @@ export function CourseCatalog({ initialCourses }: CourseCatalogProps) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            maxLength={100}
             placeholder="Search courses — e.g. Tajweed, memorization, Arabic"
-            className="h-12 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] pl-11 pr-4 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2"
+            className={cn(inputClasses, "pl-11 pr-4")}
           />
         </div>
       </div>
@@ -148,7 +151,11 @@ export function CourseCatalog({ initialCourses }: CourseCatalogProps) {
 
         {searchErrorActive && (
           <p className="mx-auto max-w-md rounded-[var(--radius-md)] border border-[var(--error)] bg-[var(--error-bg)] p-4 text-center text-sm text-[var(--error)]">
-            Something went wrong searching courses. Please try again in a moment.
+            {searchError === "busy"
+              ? "Search is busy — please try again in a moment."
+              : searchError === "unavailable"
+                ? "Search is unavailable right now."
+                : "Something went wrong searching courses. Please try again in a moment."}
           </p>
         )}
 

@@ -32,6 +32,8 @@
   --surface-alt: #EDF2EE;
   --border: #DFE5E0;
   --border-strong: #7D8680;
+  /* Form field borders: ~3.1:1 against white (WCAG 1.4.11), lighter than border-strong. */
+  --border-input: #8E948F;
   --text: #1C2421;
   --text-muted: #56615C;
 
@@ -240,6 +242,222 @@ h3 {
   direction: rtl;
 }
 
+/* ── Markdown content (blog posts; components/markdown/markdown-content.tsx) ──
+   Own prose styles (no typography plugin). Plain class selectors so they win
+   over the unlayered h2/h3 rules above.
+
+   Arabic/Urdu: every block has dir="auto", so a line that starts in Arabic
+   script resolves to RTL; the renderer also marks such blocks .md-arabic
+   (Arabic font, larger size). Arabic words inside an English paragraph fall
+   through to Amiri glyph-by-glyph: Source Sans 3 has no Arabic glyphs and
+   next/font gives Amiri's Arabic face a unicode-range, so Amiri is listed
+   right after it — before the metric fallback fonts (e.g. Arial), which do
+   have Arabic glyphs and would otherwise win. The literal names are the
+   font-family names next/font emits for next/font/google fonts. */
+
+.md-prose {
+  max-width: 65ch;
+  font-family: "Source Sans 3", "Amiri", var(--font-body), system-ui, sans-serif;
+  --md-size: 17px;
+  font-size: var(--md-size);
+  line-height: 1.7;
+  color: var(--text);
+  overflow-wrap: break-word;
+}
+
+@media (min-width: 1024px) {
+  .md-prose {
+    --md-size: 18px;
+  }
+}
+
+/* Fills its column (the article page sets its own ~720px reading width). */
+.md-prose.md-prose-full {
+  max-width: none;
+}
+
+.md-prose > :first-child {
+  margin-top: 0;
+}
+
+.md-prose > :last-child {
+  margin-bottom: 0;
+}
+
+.md-prose p,
+.md-prose ul,
+.md-prose ol,
+.md-prose blockquote,
+.md-prose pre,
+.md-prose .md-table,
+.md-prose img {
+  margin: 0 0 1.25em;
+}
+
+.md-prose h2,
+.md-prose h3,
+.md-prose h4 {
+  font-family: var(--font-heading), Georgia, "Times New Roman", serif;
+  color: var(--green-900);
+  line-height: 1.3;
+  margin: 1.8em 0 0.6em;
+}
+
+.md-prose h2 {
+  font-size: 1.625rem;
+  font-weight: 600;
+}
+
+.md-prose h3 {
+  font-size: 1.3125rem;
+  font-weight: 600;
+}
+
+.md-prose h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.md-prose a {
+  color: var(--green-700);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border-radius: 2px;
+}
+
+.md-prose a:hover {
+  color: var(--green-800);
+}
+
+.md-prose a:focus-visible,
+.md-prose .md-table:focus-visible {
+  outline: 3px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.md-prose strong {
+  font-weight: 700;
+  color: var(--green-950);
+}
+
+.md-prose ul,
+.md-prose ol {
+  padding-inline-start: 1.5em;
+}
+
+.md-prose ul {
+  list-style: disc;
+}
+
+.md-prose ol {
+  list-style: decimal;
+}
+
+.md-prose li {
+  margin: 0.35em 0;
+  padding-inline-start: 0.25em;
+}
+
+.md-prose li > ul,
+.md-prose li > ol {
+  margin: 0.35em 0 0;
+}
+
+.md-prose li::marker {
+  color: var(--green-700);
+}
+
+.md-prose blockquote {
+  border-inline-start: 4px solid var(--gold-500);
+  background: var(--gold-50);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.9em 1.2em;
+  color: var(--text);
+}
+
+.md-prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.md-prose code {
+  background: var(--surface-alt);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.875em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.md-prose pre {
+  background: var(--surface-alt);
+  border-radius: var(--radius-sm);
+  padding: 1em 1.2em;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+
+.md-prose pre code {
+  background: none;
+  padding: 0;
+}
+
+.md-prose hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2.25em 0;
+}
+
+.md-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+
+.md-prose .md-table {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.md-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375em;
+  line-height: 1.5;
+}
+
+.md-prose th,
+.md-prose td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.6em 0.9em;
+  text-align: start;
+  vertical-align: top;
+}
+
+.md-prose th + th,
+.md-prose td + td {
+  border-inline-start: 1px solid var(--border);
+}
+
+.md-prose th {
+  background: var(--surface-alt);
+  font-weight: 600;
+  color: var(--green-900);
+  white-space: nowrap;
+}
+
+.md-prose tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.md-prose .md-arabic {
+  /* Absolute (not em) so a nested Arabic block doesn't compound the bump. */
+  font-family: var(--font-arabic), "Traditional Arabic", serif;
+  font-size: calc(var(--md-size) * 1.2);
+  line-height: 1.9;
+}
+
 /* ── Focus ring utility ─────────────────────────────────────────── */
 
 .focus-ring {
@@ -264,6 +482,46 @@ h3 {
 
 .skip-link:focus {
   transform: translateY(0);
+}
+
+/* ── Admin widgets: one calm opacity-only fade (motion-safe only) ─ */
+
+@keyframes admin-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Admin sheet (slides in from the right) and toasts: short, calm, motion-safe only */
+
+@keyframes admin-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes admin-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Admin modal dialogs (sheet, confirm): lock page scroll while one is open */
+body:has(dialog[data-admin-modal][open]) {
+  overflow: hidden;
 }
 
 /* ── Body scroll lock (mobile menu open) ───────────────────────── */

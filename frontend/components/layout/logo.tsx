@@ -5,18 +5,27 @@ interface LogoProps {
   /** Use light colors for dark backgrounds (footer). */
   variant?: "default" | "light";
   className?: string;
+  /** Link target — defaults to the public homepage. */
+  href?: string;
+  /** Accessible name for the link; defaults to the homepage label. */
+  ariaLabel?: string;
 }
 
-export function Logo({ variant = "default", className }: LogoProps) {
+export function Logo({
+  variant = "default",
+  className,
+  href = "/",
+  ariaLabel = "Adan Online Academy — Home",
+}: LogoProps) {
   const isLight = variant === "light";
   return (
     <Link
-      href="/"
+      href={href}
       className={cn(
         "inline-flex items-center gap-2 focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2 rounded-[var(--radius-sm)]",
         className,
       )}
-      aria-label="Adan Online Academy — Home"
+      aria-label={ariaLabel}
     >
       <span
         lang="ar"

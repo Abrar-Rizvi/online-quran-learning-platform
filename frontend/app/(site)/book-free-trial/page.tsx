@@ -21,7 +21,8 @@ export default function BookFreeTrialPage() {
         <Container>
           <Reveal>
             <div className="mx-auto max-w-xl">
-              <TrialRequestForm />
+              {/* The page header is the only heading; the card starts with its intro line. */}
+              <TrialRequestForm heading={null} />
             </div>
           </Reveal>
         </Container>

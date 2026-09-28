@@ -73,11 +73,30 @@ export function About() {
   const headingId = "about-heading";
 
   return (
-    <section aria-labelledby={headingId} className="bg-[var(--bg)] py-16 lg:py-24">
+    <section
+      id="about"
+      aria-labelledby={headingId}
+      className="scroll-mt-16 nav:scroll-mt-[72px] bg-[var(--bg)] py-16 lg:py-24"
+    >
       <Container>
-        {/* ── Block 1: text-left / image-right ── */}
+        {/* ── Block 1: text-left / image-right (image first on mobile) ── */}
         <div className="grid items-center gap-12 lg:grid-cols-[11fr_9fr] lg:gap-16">
-          <div>
+          <ImageReveal className="mx-auto w-full max-w-[420px] lg:order-2 lg:max-w-none">
+            <div
+              className="relative overflow-hidden rounded-[var(--radius-lg)]"
+              style={{ aspectRatio: "3/2" }}
+            >
+              <Image
+                src={ABOUT.imageOne.src}
+                alt={ABOUT.imageOne.alt}
+                fill
+                sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"
+                className="object-cover object-center"
+              />
+            </div>
+          </ImageReveal>
+
+          <div className="lg:order-1">
             <Reveal>
               <p
                 className="text-[1.125rem] font-semibold tracking-[0.03em] text-[var(--green-800)]"
@@ -119,21 +138,6 @@ export function About() {
               ))}
             </ul>
           </div>
-
-          <ImageReveal className="mx-auto w-full max-w-[420px] lg:max-w-none">
-            <div
-              className="relative overflow-hidden rounded-[var(--radius-lg)]"
-              style={{ aspectRatio: "3/2" }}
-            >
-              <Image
-                src={ABOUT.imageOne.src}
-                alt={ABOUT.imageOne.alt}
-                fill
-                sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"
-                className="object-cover object-center"
-              />
-            </div>
-          </ImageReveal>
         </div>
 
         {/* ── Stat strip ── */}
@@ -157,7 +161,22 @@ export function About() {
 
         {/* ── Block 2: image-left / text-right ── */}
         <div className="mt-16 grid items-center gap-12 lg:mt-24 lg:grid-cols-[9fr_11fr] lg:gap-16">
-          <div className="lg:order-2">
+          <ImageReveal className="mx-auto w-full max-w-[420px] lg:max-w-none">
+            <div
+              className="relative overflow-hidden rounded-[var(--radius-lg)]"
+              style={{ aspectRatio: "3/2" }}
+            >
+              <Image
+                src={ABOUT.imageTwo.src}
+                alt={ABOUT.imageTwo.alt}
+                fill
+                sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"
+                className="object-cover object-center"
+              />
+            </div>
+          </ImageReveal>
+
+          <div>
             <Reveal>
               <h2 style={{ lineHeight: 1.15 }}>{ABOUT.missionHeading}</h2>
             </Reveal>
@@ -177,21 +196,6 @@ export function About() {
               </p>
             </Reveal>
           </div>
-
-          <ImageReveal className="mx-auto w-full max-w-[420px] lg:order-1 lg:max-w-none">
-            <div
-              className="relative overflow-hidden rounded-[var(--radius-lg)]"
-              style={{ aspectRatio: "3/2" }}
-            >
-              <Image
-                src={ABOUT.imageTwo.src}
-                alt={ABOUT.imageTwo.alt}
-                fill
-                sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"
-                className="object-cover object-center"
-              />
-            </div>
-          </ImageReveal>
         </div>
       </Container>
     </section>

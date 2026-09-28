@@ -11,5 +11,7 @@ class StudentRead(SQLModel):
     name: str
     email: str
     phone: Optional[str] = None
+    whatsapp: Optional[str] = None
     country: Optional[str] = None
+    registration_no: str
     created_at: datetime

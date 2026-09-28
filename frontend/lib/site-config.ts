@@ -22,22 +22,84 @@ export const ctaLinks: CtaLink[] = [
   { label: "Enrollment", href: "/enroll", variant: "secondary" },
 ];
 
-export const footerAcademyLinks: NavLink[] = [
-  { label: "Fee", href: "/#fee" },
-  { label: "FAQ", href: "/faq" },
-  { label: "Contact", href: "/contact" },
-  { label: "Book a free trial", href: "/book-free-trial" },
-  { label: "Enrollment", href: "/enroll" },
+export const brandTagline =
+  "Helping Muslim families learn Quran online with qualified teachers in a safe & friendly environment.";
+
+/** Footer "Quick Links" column, in display order. */
+export const footerQuickLinks: NavLink[] = [
+  { label: "Contact Us", href: "/contact" },
+  { label: "Testimonials", href: "/#testimonials" },
+  { label: "Fee Structure", href: "/#fee" },
+  { label: "Courses", href: "/courses" },
+  { label: "Blog", href: "/blog" },
+  { label: "About Us", href: "/#about" },
 ];
 
-export const brandTagline =
-  "Live one-to-one online Quran classes for children and adults.";
+/** Footer "Legal" column, in display order. These pages don't exist yet — same pattern as other not-yet-built routes (e.g. /contact, /blog). */
+export const footerLegalLinks: NavLink[] = [
+  { label: "Safeguarding Policy", href: "/safeguarding-policy" },
+  { label: "Cookie Policy", href: "/cookie-policy" },
+  { label: "Refund Policy", href: "/refund-policy" },
+  { label: "Terms & Conditions", href: "/terms" },
+  { label: "Privacy Policy", href: "/privacy-policy" },
+];
 
-/**
- * Fallback only: used when NEXT_PUBLIC_WHATSAPP_NUMBER isn't configured (see getContactConfig()).
- * MUST be replaced with the academy's real WhatsApp number (via that env var) before launch.
- */
-export const WHATSAPP_FALLBACK_URL = "https://wa.me/REPLACE_WITH_ACADEMY_NUMBER";
+export interface FooterContactRow extends NavLink {
+  icon: "phone" | "mail";
+}
+
+/** Footer "Contact Us" column — exactly these 3 rows, in this order. */
+export const footerContactRows: FooterContactRow[] = [
+  { label: "+1 (613) 391-1457", href: "tel:+16133911457", icon: "phone" },
+  { label: "+1 (413) 381-2074", href: "tel:+14133812074", icon: "phone" },
+  { label: "info@quranclass.us", href: "mailto:info@quranclass.us", icon: "mail" },
+];
+
+export type SocialPlatform =
+  | "facebook"
+  | "x"
+  | "instagram"
+  | "youtube"
+  | "pinterest"
+  | "tiktok";
+
+export interface SocialLink {
+  platform: SocialPlatform;
+  label: string;
+  /** Empty until the academy supplies a real URL — the footer renders only icons with a non-empty url. */
+  url: string;
+}
+
+/** Free-trial length shown on the Contact page's CTA card — must match the academy's real free-trial policy. */
+export const FREE_TRIAL_DAYS = 5;
+
+export const socialLinks: SocialLink[] = [
+  { platform: "facebook", label: "Facebook", url: "" },
+  { platform: "x", label: "X (Twitter)", url: "" },
+  { platform: "instagram", label: "Instagram", url: "" },
+  { platform: "youtube", label: "YouTube", url: "" },
+  { platform: "pinterest", label: "Pinterest", url: "" },
+  { platform: "tiktok", label: "TikTok", url: "" },
+];
+
+/** Academy WhatsApp number, as displayed, and its chat link. */
+export const ACADEMY_WHATSAPP_NUMBER = "+1 (613) 391-1457";
+export const ACADEMY_WHATSAPP_URL = "https://wa.me/16133911457";
+
+/** Used by WhatsApp buttons when NEXT_PUBLIC_WHATSAPP_NUMBER isn't configured (see getContactConfig()). */
+export const WHATSAPP_FALLBACK_URL = ACADEMY_WHATSAPP_URL;
+
+export interface ContactEmail {
+  label: string;
+  email: string;
+}
+
+/** Contact page "Send Us Email" list, in display order. The info address matches the Footer's email row. */
+export const contactEmails: ContactEmail[] = [
+  { label: "Information", email: "info@quranclass.us" },
+  { label: "Registration", email: "register@quranclass.us" },
+  { label: "Complaints / Suggestions", email: "cs@quranclass.us" },
+];
 
 /** Build a WhatsApp chat URL from a phone number (digits-only). */
 export function getWhatsAppUrl(number: string): string {

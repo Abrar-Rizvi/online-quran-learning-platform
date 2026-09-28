@@ -1,11 +1,14 @@
 """Single-admin authentication helpers.
 
 Passwords stored in ``ADMIN_PASSWORD`` are plain text (filled in by the
-owner); they are hashed with bcrypt at comparison time rather than requiring
-a pre-hashed value. JWTs carry the admin username and a short lifetime.
+owner); they are hashed with bcrypt once (cached) rather than requiring a
+pre-hashed value. JWTs carry the admin username and a short lifetime.
 """
 
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from typing import Optional
 
 import jwt
@@ -23,26 +26,41 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _security = HTTPBearer(auto_error=False)
 
 
-def _admin_hash() -> str:
-    """Return a bcrypt hash of the configured ADMIN_PASSWORD.
+@lru_cache(maxsize=1)
+def _hash_of(password: str) -> str:
+    """bcrypt hash of the configured ADMIN_PASSWORD, computed once and reused."""
+    return pwd_context.hash(password)
 
-    The plain-text password is hashed on first use and cached so we never
-    require the owner to pre-hash it in ``.env``.
-    """
-    if not settings.admin_password:
+
+# Checked instead of the real hash when the username is wrong, so every login
+# attempt costs exactly one bcrypt verification (no timing hint about usernames).
+_DUMMY_HASH = pwd_context.hash(secrets.token_urlsafe(32))
+
+
+def admin_auth_configured() -> bool:
+    return bool(settings.admin_username and settings.admin_password)
+
+
+def warm_admin_hash() -> None:
+    """Hash ADMIN_PASSWORD at startup so the first login isn't slower than the rest."""
+    if settings.admin_password:
+        _hash_of(settings.admin_password)
+
+
+def check_admin_credentials(username: str, password: str) -> bool:
+    """True only if both match. Always runs one bcrypt verify, right username or not."""
+    if not admin_auth_configured():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Admin authentication is not configured.",
         )
-    return pwd_context.hash(settings.admin_password)
-
-
-def verify_admin_password(password: str) -> bool:
-    """Return True if ``password`` matches the configured ADMIN_PASSWORD."""
+    username_ok = hmac.compare_digest(username.encode(), settings.admin_username.encode())
+    target = _hash_of(settings.admin_password) if username_ok else _DUMMY_HASH
     try:
-        return pwd_context.verify(password, _admin_hash())
+        password_ok = pwd_context.verify(password, target)
     except (ValueError, TypeError):
-        return False
+        password_ok = False
+    return username_ok and password_ok
 
 
 def create_access_token(

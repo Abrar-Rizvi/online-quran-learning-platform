@@ -3,7 +3,8 @@ API Information
 
 This file documents every API endpoint currently implemented in the backend
 (FastAPI + SQLModel). It is for reference only; it does not affect the code.
-Total number of implemented APIs: 20
+Total number of implemented APIs: 31 (30 registered while CHAT_ENABLED is
+false, which is the default)
 
 Authentication
 --------------
@@ -14,7 +15,36 @@ as:
     Authorization: Bearer <access_token>
 
 Requests without a valid token return 401. The remaining public endpoints
-(catalog, enrollment, trial requests, chat) do not require a token.
+(health, catalog, fees, enrollment, trial requests, public blog, chat) do
+not require a token.
+
+Protected-endpoint 401 bodies (all with header WWW-Authenticate: Bearer):
+{"detail": "Not authenticated"} (missing or non-Bearer Authorization header),
+{"detail": "Invalid token"}, {"detail": "Token has expired"}.
+
+Environment (APP_ENV): "development" or "production"; unset or any other
+value means production. In production /docs, /redoc and /openapi.json are
+disabled (404) and the app refuses to start if JWT_SECRET_KEY is missing or
+shorter than 32 characters, ADMIN_USERNAME is missing, or ADMIN_PASSWORD is
+missing or shorter than 12 characters (development only logs a warning).
+
+CORS: only the origins in FRONTEND_URL and ALLOWED_ORIGINS (comma-separated,
+trimmed, trailing slash removed) are allowed, with credentials and any
+method/header; "*" is ignored. Development additionally allows
+http://localhost:3000. Unhandled server errors return 500 {"detail":
+"Something went wrong. Please try again."} with the CORS headers still
+present; the real error is only logged.
+
+Rate limits (per client IP, in-memory per process, 429 with Retry-After):
+GET /courses/search 30/minute; POST /enrollments and POST /trial-requests
+10/hour each (validation failures count too; POST /enrollments requests
+carrying a valid admin token are not counted); POST /auth/login 5 failed
+attempts per 15 minutes.
+
+Environment flags affecting public endpoints: CHAT_ENABLED (default false;
+registers POST /chat when true) and TRUST_PROXY_HEADERS (default false; set
+true behind Railway's proxy so rate limits key on the right-most
+X-Forwarded-For entry).
 
 
 1. Endpoint: GET /health
@@ -48,7 +78,19 @@ embedded (Gemini) and matched against the stored course vectors with
 pgvector cosine distance, so results are the most relevant courses rather
 than only exact name matches. Optional `limit` (default 10, 1-50) caps the
 number of results. Returns the same CourseRead shape as GET /courses.
-Returns 422 if `q` is missing or blank.
+Returns 422 if `q` is missing, blank, or longer than 100 characters after
+trimming. Rate limited per client IP (about 30 requests per minute, sliding
+window, in-memory per process): over the limit returns 429 {"detail": "Too
+many searches. Please wait a moment."} with a Retry-After header (seconds).
+If the embedding can't be computed (missing/invalid GEMINI_API_KEY,
+timeout, network, quota) it returns 503 {"detail": "Search is temporarily
+unavailable. Please try again."}; the real error is only logged. The
+Gemini call uses a 4 s per-attempt timeout with at most 1 retry, and runs
+before any database query, so no DB connection is held while waiting.
+Successful query embeddings are cached in memory (~500 most recent
+normalized queries), so repeated searches don't call Gemini again. With
+TRUST_PROXY_HEADERS=true the client IP is the right-most X-Forwarded-For
+entry (the one Railway's edge proxy appends); otherwise the TCP peer.
 
 Used By:
 Next.js frontend course listing page (search box).
@@ -69,17 +111,49 @@ the plan options and prices for the selected course).
 
 ---
 
-5. Endpoint: POST /enrollments
+5. Endpoint: GET /fees
 
 Purpose:
-Handles the enrollment form submission. The user selects a course plan and
-provides their student details (name, email, phone, country) plus an
-optional preferred time. The API finds or creates the student by email (one
-student per email), then creates an enrollment record linking that student
-to the selected course plan. Every new enrollment starts with status
+Returns every course plan (fee plan) across all courses, ordered by id:
+[{"id", "course_id", "days_per_week", "fee", "currency"}]. fee is a decimal
+serialized as a string (e.g. "30.00"). No query params, no auth.
+
+Used By:
+Next.js frontend homepage fee section, footer, and the enrollment
+confirmation page (to resolve a plan's course name).
+
+---
+
+6. Endpoint: POST /enrollments
+
+Purpose:
+Handles the enrollment form submission. Request body (all fields
+required): {"name", "email", "phone", "country", "course_plan_id",
+"preferred_time"}. All text is trimmed first. name: 1-100 characters, not
+only whitespace; email: at most 254 characters, same format rule as POST
+/trial-requests (one "@", no spaces, a dot in the domain), lower-cased;
+phone: at most 32 characters containing 7-15 digits; country: 1-64
+characters; preferred_time: a time of day ("HH:MM" or "HH:MM:SS"), raw
+input at most 64 characters, on the hour or half hour only (minutes 00 or
+30; otherwise 422 "Please choose a time on the hour or half hour." —
+already-stored times such as 09:44 stay valid). Optional "whatsapp": blank
+or omitted means none; otherwise at most 32 characters containing 7-15
+digits. A new student stores it; an existing student (same email) keeps
+their saved details, including whatsapp. Missing/invalid fields return 422 naming the
+field. Rate limited to 10 submissions per client IP per hour: 429 {"detail":
+"Too many submissions. Please try again later."} with Retry-After (requests
+with a valid admin bearer token — the admin "Enroll this student" flow —
+aren't counted). The API finds
+or creates the student by email (one student per email; a returning email
+keeps its existing student record and registration_no), then creates an
+enrollment record linking that student to the selected course plan. Every new enrollment starts with status
 `on_trial`. Returns 404 if the course plan does not exist and 409 if the
-student is already enrolled in that course plan. Returns the created
-enrollment with the student and course plan information.
+student is already enrolled in that course plan. Returns 201 with the
+created enrollment: {"id", "status", "preferred_time", "enrolled_at",
+"student", "course_plan", "confirmation_token"}. confirmation_token is a
+random 43-character URL-safe string (secrets.token_urlsafe(32)); it is the
+only way to open the public confirmation page (endpoint 7) and only the
+submitter receives it.
 
 Used By:
 The website's enrollment form (Next.js frontend). This is the main entry
@@ -87,19 +161,97 @@ point for a user enrolling in a course.
 
 ---
 
-6. Endpoint: GET /enrollments/{enrollment_id}
+7. Endpoint: GET /enrollments/confirmation/{token}
 
 Purpose:
-Returns a single enrollment record (student info + course plan info). Used to
-look up or confirm a specific enrollment. Returns 404 if the enrollment does
-not exist.
+Returns one enrollment (student info + course plan info) for the public
+confirmation page, looked up by its confirmation_token (from the POST
+/enrollments response). Same shape as the POST response without the token:
+{"id", "status", "preferred_time", "enrolled_at", "student",
+"course_plan"}; the nested student includes registration_no. A value that
+isn't token-shaped (43 characters of A-Z a-z 0-9 _ -) returns 404 without a
+database query; an unknown token returns 404 {"detail": "Enrollment not
+found"}. Replaces the removed GET /enrollments/{enrollment_id}, which
+exposed student details via sequential ids (it now returns 404).
 
 Used By:
-Next.js frontend (e.g. confirmation page after enrollment).
+Next.js confirmation page /enroll/confirmation/[token].
+
+Auth:
+None (public endpoint); the unguessable token is the access control.
 
 ---
 
-7. Endpoint: POST /chat
+8. Endpoint: POST /trial-requests
+
+Purpose:
+Handles the "Book a Free Trial" form submission. Body: name, email,
+whatsapp and country (all required; trimmed; name 1-100 characters, email
+at most 254 with the same format rule as POST /enrollments, whatsapp at
+most 32 characters containing 7-15 digits, country 1-64). Rate limited to
+10 submissions per client IP per hour (429 {"detail": "Too many
+submissions. Please try again later."} with Retry-After). Creates one row in the
+trial_requests table (id, name, email, whatsapp, country, status,
+created_at) and returns it with status 201. Text fields are trimmed and
+the email is lower-cased. Every new request starts with status
+`on_trial` (see the trial-request lifecycle under endpoint 30).
+This is a lightweight lead capture kept separate from students and
+enrollments: it collects no course or plan, does not find-or-create a
+student, and does not dedupe, so the same email may submit more than
+once. Returns 422 if a field is missing, blank, too long or malformed.
+
+Used By:
+Next.js frontend "Book a Free Trial" page (/book-free-trial).
+
+Auth:
+None (public endpoint). There is no rate limiting or spam protection yet.
+
+---
+
+9. Endpoint: GET /blog
+
+Purpose:
+Public list of PUBLISHED blog posts only (drafts are never returned),
+ordered by published_at descending, then id descending. Query params:
+`limit` (default 10, 1-50) and `offset` (default 0, >= 0); out-of-range
+values return 422. Response:
+{"items": [BlogPostSummary], "total": N, "limit": N, "offset": N}
+where total is the number of published posts and BlogPostSummary is
+{"id", "title", "slug", "excerpt", "cover_image_url" (string or null),
+"published_at", "updated_at"}. The Markdown content is NOT included in the
+list.
+
+Used By:
+Future Next.js /blog listing page (the current /blog page is a static
+"Coming soon" placeholder and does not call this yet).
+
+Auth:
+None (public endpoint).
+
+---
+
+10. Endpoint: GET /blog/{slug}
+
+Purpose:
+Returns one PUBLISHED post by slug: {"id", "title", "slug", "excerpt",
+"content", "cover_image_url", "published_at", "updated_at"}. Returns 404
+{"detail": "Blog post not found"} if no post has that slug OR the post is a
+draft (drafts are indistinguishable from missing posts publicly).
+
+Content security: `content` is raw Markdown stored exactly as the admin
+wrote it and is NOT sanitized by the backend. The frontend MUST render it as
+Markdown with raw HTML disabled (no dangerouslySetInnerHTML of unsanitized
+output), otherwise a post could inject HTML/script into the site.
+
+Used By:
+Future Next.js blog post page.
+
+Auth:
+None (public endpoint).
+
+---
+
+11. Endpoint: POST /chat
 
 Purpose:
 Admission Agent chat endpoint. Sends the user message together with the
@@ -113,18 +265,36 @@ message is appended to that conversation (404 if it does not exist). Returns
 replies in the language the user writes (English / Urdu / Roman Urdu).
 Returns 422 for a blank message and 503 if the AI service is not configured.
 
+Only registered when the env var CHAT_ENABLED=true (default false): while
+disabled, POST /chat returns 404 and is absent from /openapi.json. Keep it
+disabled in production until the chat hardening items are done (timeouts,
+no DB session held during the LLM call, message length cap, unguessable
+conversation ids with ownership, per-IP limits, generic error messages).
+The admin conversation endpoints (20-22) are always available.
+
 Used By:
-Next.js frontend chat widget (visitor-facing admission assistant).
+Next.js frontend chat widget (visitor-facing admission assistant) — not
+built yet.
 
 ---
 
-8. Endpoint: POST /auth/login
+12. Endpoint: POST /auth/login
 
 Purpose:
 Authenticates the admin with {"username": "...", "password": "..."} and, on
 success, returns {"access_token": "...", "token_type": "bearer"}. The token
 expires after 8 hours and must be sent as a Bearer token on protected
-endpoints. Returns 401 with a generic message if credentials are invalid.
+endpoints. Returns 401 {"detail": "Invalid credentials"} (generic on purpose) if
+credentials are invalid, 422 if a field is missing, and 503 if the server's
+ADMIN_PASSWORD or JWT_SECRET_KEY env var is not configured. There is no
+refresh token; log in again after expiry.
+Brute-force protection: at most 5 FAILED attempts per client IP per 15
+minutes; the next attempt returns 429 {"detail": "Too many login attempts.
+Please try again in N minutes."} with Retry-After (successful logins aren't
+counted and don't reset the window). Every attempt runs exactly one bcrypt
+verification (against a dummy hash when the username is wrong) and the
+username is compared in constant time, so response time doesn't reveal
+whether the username exists.
 Not protected itself.
 
 Used By:
@@ -132,7 +302,7 @@ Next.js frontend admin login page.
 
 ---
 
-9. Endpoint: GET /admin/summary
+13. Endpoint: GET /admin/summary
 
 Purpose:
 Dashboard summary. Returns total student count, total enrollment count, and
@@ -148,14 +318,16 @@ Requires a valid admin Bearer token.
 
 ---
 
-10. Endpoint: GET /admin/enrollments
+14. Endpoint: GET /admin/enrollments
 
 Purpose:
-Returns every enrollment (not paginated) with admin detail: id, student
-(name, email), course + plan info (course name, days_per_week, fee,
-currency), status, enrolled_at, preferred_time. Optional query param
-`status` filters to a single status (on_trial, active, cancelled, alumni);
-an unrecognized value returns 422.
+Returns every enrollment (not paginated), ordered by id, with admin detail:
+[{"id", "student": {"id", "name", "email", "registration_no", "whatsapp"},
+"course_name", "days_per_week", "fee", "currency", "status", "enrolled_at",
+"preferred_time"}]. fee is a decimal string; preferred_time is "HH:MM:SS"
+or null; registration_no is the student's "AOA-NNNN" reference. Optional
+query param `status` filters to a single status (on_trial, active,
+cancelled, alumni); an unrecognized value returns 422.
 
 Used By:
 Admin dashboard enrollments table, with status filtering.
@@ -165,7 +337,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-11. Endpoint: PATCH /admin/enrollments/{enrollment_id}/status
+15. Endpoint: PATCH /admin/enrollments/{enrollment_id}/status
 
 Purpose:
 Updates an enrollment's status. Request body: {"status": "on_trial" |
@@ -175,7 +347,9 @@ alumni/cancelled; cancelled and alumni are terminal). An invalid transition
 (e.g. alumni -> on_trial) returns 400 with a message stating the current
 status and the allowed transitions (or that the status is terminal).
 Returns 404 if the enrollment does not exist, 422 for an unknown status
-value, and 200 with the updated enrollment on success.
+value, and 200 with the updated enrollment on success, in the same shape
+as one GET /admin/enrollments item (student includes id, name, email and
+registration_no).
 
 Used By:
 Admin dashboard to move an enrollment through its lifecycle (trial to
@@ -186,7 +360,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-12. Endpoint: DELETE /admin/enrollments/{enrollment_id}
+16. Endpoint: DELETE /admin/enrollments/{enrollment_id}
 
 Purpose:
 Deletes an enrollment. Returns 204 on success and 404 if the enrollment does
@@ -200,11 +374,14 @@ Requires a valid admin Bearer token.
 
 ---
 
-13. Endpoint: GET /admin/students
+17. Endpoint: GET /admin/students
 
 Purpose:
-Returns all students (id, name, email, phone, country, created_at), the full
-list, not paginated, ordered by id.
+Returns all students (id, name, email, phone, whatsapp, country,
+registration_no, created_at; whatsapp is null unless given), the full list, not paginated, ordered by id. registration_no
+(e.g. "AOA-1006") is a unique reference number assigned once when the
+student is first created (never regenerated for a returning student who
+enrolls again) and is never null.
 
 Used By:
 Admin dashboard students table.
@@ -214,11 +391,13 @@ Requires a valid admin Bearer token.
 
 ---
 
-14. Endpoint: PATCH /admin/students/{student_id}
+18. Endpoint: PATCH /admin/students/{student_id}
 
 Purpose:
 Partially updates a student. Request body may contain any of: name, email,
-phone, country — only supplied fields are changed; omitted fields keep their
+phone, whatsapp, country — only supplied fields are changed; a blank phone,
+whatsapp or country clears it (null); a non-blank whatsapp must be at most
+32 characters with 7-15 digits (422 otherwise); omitted fields keep their
 current value. Emails are trimmed + lower-cased and format-checked, and must
 not belong to another student (returns 409 with a clear message otherwise).
 Returns 404 if the student does not exist, 422 for a blank/null name, an
@@ -232,7 +411,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-15. Endpoint: DELETE /admin/students/{student_id}
+19. Endpoint: DELETE /admin/students/{student_id}
 
 Purpose:
 Deletes a student. If the student has any enrollments the delete would
@@ -249,7 +428,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-16. Endpoint: GET /admin/conversations
+20. Endpoint: GET /admin/conversations
 
 Purpose:
 Returns all chat conversations (id, started_at, last_message_at) with a
@@ -264,7 +443,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-17. Endpoint: GET /admin/conversations/{conversation_id}/messages
+21. Endpoint: GET /admin/conversations/{conversation_id}/messages
 
 Purpose:
 Returns all messages for one conversation in chronological order (id, role,
@@ -279,7 +458,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-18. Endpoint: DELETE /admin/conversations/{conversation_id}
+22. Endpoint: DELETE /admin/conversations/{conversation_id}
 
 Purpose:
 Deletes a conversation and all of its messages (the messages are deleted
@@ -294,7 +473,7 @@ Requires a valid admin Bearer token.
 
 ---
 
-19. Endpoint: GET /admin/analytics/course-enrollments
+23. Endpoint: GET /admin/analytics/course-enrollments
 
 Purpose:
 Returns enrollment counts grouped by course (course_id, course_name,
@@ -311,22 +490,170 @@ Requires a valid admin Bearer token.
 
 ---
 
-20. Endpoint: POST /trial-requests
+24. Endpoint: GET /admin/blog
 
 Purpose:
-Handles the "Book a Free Trial" form submission. Body: name, email and
-whatsapp (all required) plus an optional country. Creates one row in the
-trial_requests table (id, name, email, whatsapp, country, status,
-created_at) and returns it with status 201. Text fields are trimmed, the
-email is lower-cased, and a blank country is stored as null. Every new
-request starts with status `new`. This is a lightweight lead capture kept
-separate from students and enrollments: it collects no course or plan,
-does not find-or-create a student, and does not dedupe, so the same email
-may submit more than once. Returns 422 if name, email or whatsapp is
-missing or blank, or the email is malformed.
+Lists ALL blog posts, drafts included, newest updated first (updated_at
+descending, then id descending). Optional query param `status`
+(draft | published); any other value returns 422. Not paginated. Each item:
+{"id", "title", "slug", "excerpt", "status", "published_at", "created_at",
+"updated_at"}
+(no content).
 
 Used By:
-Next.js frontend "Book a Free Trial" page (/book-free-trial).
+Future admin blog manager list.
 
 Auth:
-None (public endpoint). There is no rate limiting or spam protection yet.
+Requires a valid admin Bearer token.
+
+---
+
+25. Endpoint: GET /admin/blog/{post_id}
+
+Purpose:
+Returns one post (draft or published) with everything, including content:
+{"id", "title", "slug", "excerpt", "content", "cover_image_url", "status",
+"published_at", "created_at", "updated_at"}.
+Returns 404 {"detail": "Blog post not found"} if it does not exist.
+
+Used By:
+Future admin blog editor (load a post for editing).
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+26. Endpoint: POST /admin/blog
+
+Purpose:
+Creates a post. Request body: {"title", "excerpt", "content", "slug"?,
+"cover_image_url"?, "status"?}. status defaults to "draft" (a post created
+as "published" gets published_at set immediately). If slug is omitted or
+blank it is generated from the title (lowercased, every run of
+non-alphanumeric characters becomes one hyphen, leading/trailing hyphens
+trimmed; "post" if nothing is left, e.g. an Arabic/Urdu-only title); if
+that generated slug is taken, -2, -3, ... is appended until it is unique.
+Returns 201 with the full post ({"id", "title", "slug", "excerpt", "content", "cover_image_url", "status",
+"published_at", "created_at", "updated_at"}),
+422 on validation errors, 409 on an explicit slug conflict.
+
+Field rules (create and update):
+  - title: required, trimmed, 1-200 characters.
+  - excerpt: required, trimmed, 1-300 characters (used for cards and the
+    meta description).
+  - content: required Markdown, stored as-is (not trimmed); blank -> 422.
+  - slug: trimmed; lowercase letters, digits and single hyphens only
+    (^[a-z0-9]+(-[a-z0-9]+)*$), max 200; invalid -> 422. An explicitly
+    supplied slug that belongs to another post returns 409
+    {"detail": "A blog post with slug '<slug>' already exists."} and is
+    never auto-suffixed.
+  - cover_image_url: optional; must be an absolute http(s) URL (max 2048);
+    blank or null stores null. No upload handling.
+  - status: "draft" | "published"; any other value -> 422.
+  - published_at is set automatically the FIRST time a post becomes
+    published and is never changed afterwards (unpublishing to draft and
+    republishing keeps the original value). updated_at changes on every
+    change; created_at never changes.
+
+Content security: `content` is raw Markdown stored exactly as the admin
+wrote it and is NOT sanitized by the backend. The frontend MUST render it as
+Markdown with raw HTML disabled (no dangerouslySetInnerHTML of unsanitized
+output), otherwise a post could inject HTML/script into the site.
+
+Used By:
+Future admin blog editor.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+27. Endpoint: PATCH /admin/blog/{post_id}
+
+Purpose:
+Partially updates a post. Body may contain any of: title, slug, excerpt,
+content, cover_image_url, status — only supplied fields change. Changing
+the title does NOT change the slug. A blank title/excerpt/content/slug
+returns 422; an explicit null for title, slug, excerpt, content or status
+returns 422 {"detail": "<field> cannot be null"}; a null (or blank)
+cover_image_url clears it. Setting status to "published" sets published_at
+only if the post has never been published before. Returns 200 with the
+full post, 404 if it does not exist, 409 on a slug conflict, 422 on
+validation errors. Field rules are the same as POST /admin/blog.
+
+Used By:
+Future admin blog editor (save, publish, unpublish).
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+28. Endpoint: DELETE /admin/blog/{post_id}
+
+Purpose:
+Permanently deletes a post (hard delete). Returns 204 with no body, or 404
+{"detail": "Blog post not found"} if it does not exist.
+
+Used By:
+Future admin blog manager.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+29. Endpoint: GET /admin/trial-requests
+
+Purpose:
+Lists ALL trial requests, newest first (created_at descending, then id
+descending). Optional query param `status` (on_trial | enrolled |
+cancelled) filters to one status; any other value returns 422. Not
+paginated. Each item: {"id", "name", "email", "whatsapp", "country",
+"status", "created_at"}.
+
+Used By:
+Admin /admin/trial-requests page and the dashboard trial counts.
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+30. Endpoint: PATCH /admin/trial-requests/{trial_request_id}/status
+
+Purpose:
+Changes a trial request's status. Request body: {"status": "on_trial" |
+"enrolled" | "cancelled"}. Lifecycle (mirrors enrollments; every new
+person starts on the academy's 5-day trial): on_trial -> enrolled or
+cancelled; enrolled and cancelled are terminal. A disallowed or same-status
+change returns 400 with a message naming the current status and the
+allowed targets, e.g. "Cannot change trial request 1 status from
+'enrolled' to 'cancelled': 'enrolled' is a terminal status and cannot be
+changed.". Returns 404 {"detail": "Trial request not found"} and 422 for
+an unknown status value. Returns the updated request (same shape as
+endpoint 29). The database enforces the three values with the CHECK
+constraint ck_trial_requests_status (default 'on_trial').
+
+Used By:
+Admin trial-requests page: "Enroll this student" (after creating the
+enrollment), "Mark as enrolled" and "Cancel trial".
+
+Auth:
+Requires a valid admin Bearer token.
+
+---
+
+31. Endpoint: DELETE /admin/trial-requests/{trial_request_id}
+
+Purpose:
+Permanently deletes a trial request (hard delete). Returns 204 with no
+body, or 404 {"detail": "Trial request not found"}. Cancelling is
+preferred to keep history.
+
+Used By:
+Admin trial-requests page.
+
+Auth:
+Requires a valid admin Bearer token.

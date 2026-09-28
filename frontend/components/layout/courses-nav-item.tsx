@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { duration, easing } from "@/lib/motion";
@@ -70,8 +69,6 @@ export function CoursesNavItem({ variant, onNavigate }: CoursesNavItemProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pathname = usePathname();
-  const isActive = pathname === "/courses" || pathname.startsWith("/courses/");
 
   function cancelScheduledClose() {
     if (closeTimer.current) {
@@ -140,11 +137,9 @@ export function CoursesNavItem({ variant, onNavigate }: CoursesNavItemProps) {
     };
   }, []);
 
+  // Hover-only pill, like the other nav links (no persistent "active" background).
   const triggerClasses = cn(
-    "inline-flex items-center gap-1 rounded-[var(--radius-sm)] text-base font-medium transition-colors duration-150 focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2",
-    isActive
-      ? "bg-[var(--green-100)] text-[var(--green-800)]"
-      : "text-[var(--text)] hover:bg-[var(--green-50)] hover:text-[var(--green-700)]",
+    "inline-flex items-center gap-1 rounded-[var(--radius-sm)] text-base font-medium text-[var(--text)] transition-colors duration-150 hover:bg-[var(--green-50)] hover:text-[var(--green-700)] focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2",
     variant === "desktop" ? "px-3 py-2" : "h-12 w-full justify-between px-4",
   );
 

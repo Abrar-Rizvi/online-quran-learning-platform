@@ -69,22 +69,8 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
       <section className="bg-[var(--bg)] py-16 lg:py-24">
         <Container>
           <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-            <Reveal>
-              <div>
-                {course.category && (
-                  <Badge variant="green" className="mb-4">
-                    {course.category}
-                  </Badge>
-                )}
-                {course.description && (
-                  <p className="text-[1.0625rem] leading-relaxed text-[var(--text-muted)]">
-                    {course.description}
-                  </p>
-                )}
-              </div>
-            </Reveal>
-
-            <Reveal delay={0.06}>
+            {/* Image first in the DOM so it stacks above the text on mobile; lg:order keeps it on the right. */}
+            <Reveal delay={0.06} className="lg:order-2">
               <div
                 className="relative overflow-hidden rounded-[var(--radius-lg)]"
                 style={{ aspectRatio: "3/2" }}
@@ -104,6 +90,21 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                     variant="detailed"
                     className="h-full w-full"
                   />
+                )}
+              </div>
+            </Reveal>
+
+            <Reveal className="lg:order-1">
+              <div>
+                {course.category && (
+                  <Badge variant="green" className="mb-4">
+                    {course.category}
+                  </Badge>
+                )}
+                {course.description && (
+                  <p className="text-[1.0625rem] leading-relaxed text-[var(--text-muted)]">
+                    {course.description}
+                  </p>
                 )}
               </div>
             </Reveal>

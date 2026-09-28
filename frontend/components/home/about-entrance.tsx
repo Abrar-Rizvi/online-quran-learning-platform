@@ -14,25 +14,23 @@ export function ImageReveal({ children, className }: ImageRevealProps) {
   const isInView = useInView(ref, { once: true, amount: 0.2 });
   const prefersReduced = useReducedMotion();
 
-  if (prefersReduced) {
-    return (
-      <div ref={ref} className={className}>
-        {children}
-      </div>
-    );
-  }
-
+  // Same motion.div on server and client (see Reveal): a plain <div> swap under
+  // reduced motion kept the SSR'd hidden inline style after hydration.
   return (
     <motion.div
       ref={ref}
       className={className}
       initial={{ opacity: 0, scale: 0.98 }}
       animate={
-        isInView
+        isInView || prefersReduced
           ? { opacity: 1, scale: 1 }
           : { opacity: 0, scale: 0.98 }
       }
-      transition={{ duration: 0.4, ease: [...easing.easeOut] }}
+      transition={
+        prefersReduced
+          ? { duration: 0 }
+          : { duration: 0.4, ease: [...easing.easeOut] }
+      }
     >
       {children}
     </motion.div>

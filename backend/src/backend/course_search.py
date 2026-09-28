@@ -7,7 +7,7 @@ the embedding + pgvector cosine-distance search logic.
 
 from sqlmodel import Session, select
 
-from .embeddings import embed_one
+from .embeddings import embed_query
 from .models import Course
 from .schemas import CourseRead
 
@@ -17,8 +17,14 @@ LIST_COLUMNS = (Course.id, Course.name, Course.description, Course.category)
 def find_similar_courses(
     session: Session, query: str, limit: int = 10
 ) -> list[CourseRead]:
-    """Return the courses whose embedding is closest to ``query``."""
-    vector = embed_one(query)
+    """Return the courses whose embedding is closest to ``query``.
+
+    The embedding is computed before the first query on ``session``, so no
+    database connection is checked out while waiting on Gemini (a Session
+    only takes a connection when it first executes). Raises
+    EmbeddingUnavailable if the embedding can't be computed.
+    """
+    vector = embed_query(query)
     rows = session.exec(
         select(*LIST_COLUMNS)
         .order_by(Course.embedding.cosine_distance(vector))

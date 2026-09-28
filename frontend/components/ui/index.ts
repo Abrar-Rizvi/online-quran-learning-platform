@@ -10,4 +10,5 @@ export { Reveal } from "./reveal";
 export { IslamicPattern } from "./islamic-pattern";
 export { StatCounter } from "./stat-counter";
 export { WhatsAppCtaCard } from "./whatsapp-cta-card";
-export { FormField, inputClasses } from "./form-field";
+export { FormField, fieldBorderClasses, inputClasses } from "./form-field";
+export { TimePicker } from "./time-picker";

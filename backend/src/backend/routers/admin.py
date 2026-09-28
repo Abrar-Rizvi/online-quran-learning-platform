@@ -54,6 +54,8 @@ def _as_admin_read(enrollment: Enrollment) -> AdminEnrollmentRead:
             name=enrollment.student.name,
             email=enrollment.student.email,
             id=enrollment.student.id,
+            registration_no=enrollment.student.registration_no,
+            whatsapp=enrollment.student.whatsapp,
         ),
         course_name=plan.course.name,
         days_per_week=plan.days_per_week,
@@ -222,7 +224,7 @@ def update_student(
         updates["email"] = candidate
 
     # Optional contact fields: trim whitespace; blank clears to NULL.
-    for key in ("phone", "country"):
+    for key in ("phone", "whatsapp", "country"):
         if key in updates and updates[key] is not None:
             updates[key] = updates[key].strip() or None
 

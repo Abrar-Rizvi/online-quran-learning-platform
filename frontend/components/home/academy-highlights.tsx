@@ -179,7 +179,7 @@ export function AcademyHighlights() {
   const headingId = "academy-highlights-heading";
 
   return (
-    <section aria-labelledby={headingId}>
+    <section id="testimonials" aria-labelledby={headingId} className="scroll-mt-16 nav:scroll-mt-[72px]">
       <div className="bg-[var(--surface)] py-16 lg:py-24">
         <Container>
           <Reveal>

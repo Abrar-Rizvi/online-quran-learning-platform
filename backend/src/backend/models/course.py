@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column
+from sqlalchemy import Column, Index
 from sqlmodel import Field, Relationship, SQLModel
 
 from ..embeddings import EMBEDDING_DIM
@@ -9,6 +9,16 @@ from ..embeddings import EMBEDDING_DIM
 
 class Course(SQLModel, table=True):
     __tablename__ = "courses"
+    __table_args__ = (
+        # Created in the initial migration with raw SQL; declared here so autogenerate
+        # doesn't try to drop it: CREATE INDEX ... USING hnsw (embedding vector_cosine_ops).
+        Index(
+            "ix_courses_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)

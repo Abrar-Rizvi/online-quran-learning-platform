@@ -1,7 +1,9 @@
+import secrets
 from datetime import datetime, time
 from enum import Enum
 from typing import Optional
 
+from sqlalchemy import CheckConstraint
 from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
 from .student import utcnow
@@ -42,6 +44,11 @@ def can_transition(current: EnrollmentStatus, target: EnrollmentStatus) -> bool:
     return target in STATUS_TRANSITIONS.get(current, set())
 
 
+def new_confirmation_token() -> str:
+    """43 URL-safe characters (32 random bytes) from the standard library."""
+    return secrets.token_urlsafe(32)
+
+
 class Enrollment(SQLModel, table=True):
     __tablename__ = "enrollments"
     __table_args__ = (
@@ -49,6 +56,12 @@ class Enrollment(SQLModel, table=True):
             "student_id",
             "course_plan_id",
             name="uq_enrollments_student_course_plan",
+        ),
+        UniqueConstraint("confirmation_token", name="uq_enrollments_confirmation_token"),
+        # Same expression as migration e3d6a0f2c9a1 (declared so autogenerate keeps it).
+        CheckConstraint(
+            "status IN ('on_trial','active','cancelled','alumni')",
+            name="ck_enrollments_status",
         ),
     )
 
@@ -58,6 +71,8 @@ class Enrollment(SQLModel, table=True):
     status: str = Field(default=DEFAULT_ENROLLMENT_STATUS.value, index=True)
     preferred_time: Optional[time] = Field(default=None)
     enrolled_at: datetime = Field(default_factory=utcnow)
+    # Unguessable id for the public confirmation page; only the submitter receives it.
+    confirmation_token: str = Field(default_factory=new_confirmation_token)
 
     student: "Student" = Relationship(back_populates="enrollments")
     course_plan: "CoursePlan" = Relationship(back_populates="enrollments")

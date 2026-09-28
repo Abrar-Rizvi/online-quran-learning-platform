@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { Button } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button, FormField, TimePicker, inputClasses } from "@/components/ui";
 import { formatPrice } from "@/components/courses/pricing-card";
 import { findCourseBySlug } from "@/lib/courses";
 import {
@@ -10,6 +11,7 @@ import {
   type CourseListItem,
   type CoursePlanItem,
 } from "@/lib/api";
+import { countryError, emailError, nameError, phoneError } from "@/lib/form-rules";
 import { cn } from "@/lib/utils";
 
 interface EnrollmentFormProps {
@@ -23,41 +25,26 @@ interface FieldErrors {
   email?: string;
   course?: string;
   plan?: string;
+  phone?: string;
+  whatsapp?: string;
+  country?: string;
+  preferredTime?: string;
 }
 
-const inputClasses =
-  "h-12 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus-visible:outline-3 focus-visible:outline-[var(--focus-ring-color)] focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
-
-function FormField({
-  label,
-  htmlFor,
-  required,
-  error,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  required?: boolean;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-[var(--text)]">
-        {label}
-        {required && <span className="text-[var(--error)]"> *</span>}
-      </label>
-      {children}
-      {error && (
-        <p className="mt-1.5 text-xs text-[var(--error)]" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
+/** API field (422 `loc`) → this form's field. */
+const API_FIELDS: Record<string, keyof FieldErrors> = {
+  name: "name",
+  email: "email",
+  phone: "phone",
+  whatsapp: "whatsapp",
+  country: "country",
+  preferred_time: "preferredTime",
+  course_plan_id: "plan",
+};
 
 export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormProps) {
+  const router = useRouter();
+
   const initialCourseId = initialCourseSlug
     ? (findCourseBySlug(courses, initialCourseSlug)?.id ?? null)
     : null;
@@ -94,13 +81,12 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [country, setCountry] = useState("");
   const [preferredTime, setPreferredTime] = useState("");
 
   const [errors, setErrors] = useState<FieldErrors>({});
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "success" | "error">(
-    "idle",
-  );
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   function handleCourseChange(value: string) {
@@ -109,15 +95,19 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
   }
 
   function validate(): FieldErrors {
+    // Same rules as the backend (lib/form-rules.ts), shown under each field.
     const next: FieldErrors = {};
-    if (!name.trim()) next.name = "Please enter your name.";
-    if (!email.trim()) {
-      next.email = "Please enter your email.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      next.email = "Please enter a valid email address.";
-    }
-    if (courseId === null) next.course = "Please choose a course.";
-    if (planId === null) next.plan = "Please choose a plan.";
+    const rules: [keyof FieldErrors, string | null][] = [
+      ["name", nameError(name)],
+      ["email", emailError(email)],
+      ["course", courseId === null ? "Please choose a course." : null],
+      ["plan", planId === null ? "Please choose a plan." : null],
+      ["phone", phoneError(phone, "Phone", "Please enter your phone number.")],
+      ["whatsapp", phoneError(whatsapp, "WhatsApp number")],
+      ["country", countryError(country)],
+      ["preferredTime", preferredTime ? null : "Please select a preferred time."],
+    ];
+    for (const [field, message] of rules) if (message) next[field] = message;
     return next;
   }
 
@@ -134,40 +124,30 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
     const result = await createEnrollment({
       name: name.trim(),
       email: email.trim(),
-      phone: phone.trim() || undefined,
-      country: country.trim() || undefined,
+      phone: phone.trim(),
+      ...(whatsapp.trim() ? { whatsapp: whatsapp.trim() } : {}),
+      country: country.trim(),
       course_plan_id: planId as number,
-      preferred_time: preferredTime || undefined,
+      preferred_time: preferredTime,
     });
 
     if (result.ok) {
-      setSubmitStatus("success");
+      router.push(`/enroll/confirmation/${result.confirmationToken}`);
+      return;
+    }
+    // Server-side field errors go under their fields; a form-level message only when none can be placed.
+    const fromServer: FieldErrors = {};
+    for (const [apiField, message] of Object.entries(result.fieldErrors ?? {})) {
+      const field = API_FIELDS[apiField];
+      if (field) fromServer[field] = message;
+    }
+    setSubmitStatus("error");
+    if (Object.keys(fromServer).length > 0) {
+      setErrors(fromServer);
+      setSubmitError(null);
     } else {
-      setSubmitStatus("error");
       setSubmitError(result.message);
     }
-  }
-
-  if (submitStatus === "success") {
-    return (
-      <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8">
-        <div className="flex flex-col items-center gap-3 py-6 text-center">
-          <span className="flex size-12 items-center justify-center rounded-full bg-[var(--green-100)] text-[var(--green-800)]">
-            <CheckIcon className="size-6" />
-          </span>
-          <h2
-            className="text-xl font-bold text-[var(--green-900)]"
-            style={{ fontFamily: "var(--font-heading)" }}
-          >
-            You&apos;re enrolled
-          </h2>
-          <p className="max-w-[40ch] text-sm leading-relaxed text-[var(--text-muted)]">
-            Thanks, {name.trim() || "there"}! We&apos;ve received your enrollment. Our team will
-            reach out to {email.trim()} to confirm your teacher and trial time.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   const isSubmitting = submitStatus === "submitting";
@@ -189,6 +169,7 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
         <FormField label="Course" htmlFor="enroll-course" required error={errors.course}>
           <select
             id="enroll-course"
+            aria-invalid={errors.course ? true : undefined}
             value={courseId ?? ""}
             onChange={(e) => handleCourseChange(e.target.value)}
             className={cn(inputClasses, "appearance-none")}
@@ -205,6 +186,7 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
         <FormField label="Plan" htmlFor="enroll-plan" required error={errors.plan}>
           <select
             id="enroll-plan"
+            aria-invalid={errors.plan ? true : undefined}
             value={planId ?? ""}
             onChange={(e) => setPlanId(e.target.value ? Number(e.target.value) : null)}
             disabled={courseId === null || plansLoading || plans.length === 0}
@@ -241,6 +223,8 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
         <FormField label="Full name" htmlFor="enroll-name" required error={errors.name}>
           <input
             id="enroll-name"
+            aria-invalid={errors.name ? true : undefined}
+            maxLength={100}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -252,6 +236,8 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
         <FormField label="Email" htmlFor="enroll-email" required error={errors.email}>
           <input
             id="enroll-email"
+            aria-invalid={errors.email ? true : undefined}
+            maxLength={254}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -261,38 +247,61 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
         </FormField>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <FormField label="Phone" htmlFor="enroll-phone">
+          <FormField label="Phone" htmlFor="enroll-phone" required error={errors.phone}>
             <input
               id="enroll-phone"
+              maxLength={32}
               type="tel"
+              inputMode="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               autoComplete="tel"
+              aria-invalid={errors.phone ? true : undefined}
               className={inputClasses}
             />
           </FormField>
 
-          <FormField label="Country" htmlFor="enroll-country">
+          <FormField label="WhatsApp number (optional)" htmlFor="enroll-whatsapp" error={errors.whatsapp}>
+            <input
+              id="enroll-whatsapp"
+              maxLength={32}
+              type="tel"
+              inputMode="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+              aria-invalid={errors.whatsapp ? true : undefined}
+              aria-describedby="enroll-whatsapp-hint"
+              className={inputClasses}
+            />
+            <p id="enroll-whatsapp-hint" className="mt-1.5 text-xs text-[var(--text-muted)]">
+              Leave empty if it&apos;s the same as your phone.
+            </p>
+          </FormField>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <FormField label="Country" htmlFor="enroll-country" required error={errors.country}>
             <input
               id="enroll-country"
+              maxLength={64}
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
               autoComplete="country-name"
+              aria-invalid={errors.country ? true : undefined}
               className={inputClasses}
             />
           </FormField>
-        </div>
 
-        <FormField label="Preferred time" htmlFor="enroll-time">
-          <input
-            id="enroll-time"
-            type="time"
-            value={preferredTime}
-            onChange={(e) => setPreferredTime(e.target.value)}
-            className={inputClasses}
-          />
-        </FormField>
+          <FormField label="Preferred time" htmlFor="enroll-time" required error={errors.preferredTime}>
+            <TimePicker
+              id="enroll-time"
+              value={preferredTime}
+              onChange={setPreferredTime}
+              invalid={Boolean(errors.preferredTime)}
+            />
+          </FormField>
+        </div>
 
         {submitStatus === "error" && submitError && (
           <p
@@ -314,22 +323,5 @@ export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormPro
         </Button>
       </div>
     </form>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

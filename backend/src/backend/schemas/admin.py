@@ -10,6 +10,7 @@ from pydantic import field_validator
 from sqlmodel import SQLModel
 
 from ..models.enrollment import EnrollmentStatus
+from .fields import check_phone
 
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
@@ -25,7 +26,16 @@ class StudentUpdate(SQLModel):
     name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    whatsapp: Optional[str] = None
     country: Optional[str] = None
+
+    @field_validator("whatsapp")
+    @classmethod
+    def validate_whatsapp(cls, value: Optional[str]) -> Optional[str]:
+        # Blank clears it (handled in the router); otherwise same rule as the enrollment form.
+        if value is None or not value.strip():
+            return value
+        return check_phone(value.strip())
 
     @field_validator("email")
     @classmethod
@@ -48,6 +58,8 @@ class AdminEnrollmentStudent(SQLModel):
     id: int
     name: str
     email: str
+    registration_no: str
+    whatsapp: Optional[str] = None
 
 
 class AdminEnrollmentRead(SQLModel):

@@ -14,6 +14,8 @@ interface PageHeaderProps {
   heading: string;
   description: string;
   className?: string;
+  /** Optional extra content rendered below the description (e.g. feature tiles). Omit for the plain band used by every other page. */
+  children?: React.ReactNode;
 }
 
 /**
@@ -23,7 +25,13 @@ interface PageHeaderProps {
  * heading, green-100/200 supporting text — sized down since this is a
  * compact title band, not a second hero.
  */
-export function PageHeader({ breadcrumbs, heading, description, className }: PageHeaderProps) {
+export function PageHeader({
+  breadcrumbs,
+  heading,
+  description,
+  className,
+  children,
+}: PageHeaderProps) {
   return (
     <section className={cn("relative overflow-hidden bg-[var(--green-900)] py-12 lg:py-16", className)}>
       <IslamicPattern
@@ -87,6 +95,8 @@ export function PageHeader({ breadcrumbs, heading, description, className }: Pag
         </h1>
 
         <p className="mt-2 max-w-[65ch] text-[var(--green-100)]">{description}</p>
+
+        {children && <div className="mt-8 lg:mt-10">{children}</div>}
       </Container>
     </section>
   );

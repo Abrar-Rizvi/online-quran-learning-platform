@@ -4,6 +4,7 @@ import { Courses } from "@/components/home/courses";
 import { Fees } from "@/components/home/fees";
 import { HowItWorks } from "@/components/home/how-it-works";
 import { AcademyHighlights } from "@/components/home/academy-highlights";
+import { FinalCta } from "@/components/home/final-cta";
 
 export default function Home() {
   return (
@@ -14,6 +15,7 @@ export default function Home() {
       <Fees />
       <HowItWorks />
       <AcademyHighlights />
+      <FinalCta />
     </>
   );
 }
