@@ -4,8 +4,15 @@ import type { Metadata } from "next";
 import { Badge, Button, Container, PageHeader, Reveal } from "@/components/ui";
 import { CourseArt } from "@/components/courses/course-art";
 import { CheckIcon, PricingGrid } from "@/components/courses/pricing-card";
-import { fetchCoursesOrThrow, fetchCourseDetail } from "@/lib/api";
-import { COURSE_IMAGES, findCourseBySlug, getCourseArtTone, normalize } from "@/lib/courses";
+import { fetchCourseDetail } from "@/lib/api";
+import {
+  findCourseBySlug,
+  getCourseArtTone,
+  getCourseImage,
+  getPublicCourses,
+  isPublicCourse,
+} from "@/lib/courses";
+import { pageMetadata, trimDescription } from "@/lib/seo";
 
 const WHATS_INCLUDED = [
   "One-to-one live classes",
@@ -18,11 +25,13 @@ interface CourseDetailPageProps {
   params: Promise<{ slug: string }>;
 }
 
+/** Hidden (short) courses resolve to null, exactly like an unknown slug: the page 404s and gets no metadata. */
 async function resolveCourse(slug: string) {
-  const courses = await fetchCoursesOrThrow();
+  const courses = await getPublicCourses();
   const match = findCourseBySlug(courses, slug);
   if (!match) return null;
-  return fetchCourseDetail(match.id);
+  const course = await fetchCourseDetail(match.id);
+  return course && isPublicCourse(course) ? course : null;
 }
 
 export async function generateMetadata({
@@ -31,9 +40,18 @@ export async function generateMetadata({
   const { slug } = await params;
   const course = await resolveCourse(slug);
   if (!course) return {};
+  const description = course.description
+    ? trimDescription(course.description)
+    : `Live one-to-one online ${course.name} classes with Adan Online Academy.`;
+  const metadata = pageMetadata({ title: course.name, description, path: `/courses/${slug}` });
+  const imageSrc = getCourseImage(course.name);
+  if (!imageSrc) return metadata;
+  // The optimizer's 1200px version, not the raw file: some course photos exceed X's 5 MB card limit.
+  const images = [{ url: `/_next/image?url=${encodeURIComponent(imageSrc)}&w=1200&q=75`, alt: `${course.name} course` }];
   return {
-    title: course.name,
-    description: course.description ?? undefined,
+    ...metadata,
+    openGraph: { ...metadata.openGraph, images },
+    twitter: { ...metadata.twitter, images },
   };
 }
 
@@ -43,7 +61,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
 
   if (!course) notFound();
 
-  const imageSrc = COURSE_IMAGES[normalize(course.name)];
+  const imageSrc = getCourseImage(course.name);
   const plans = course.course_plans.map((plan) => ({
     daysPerWeek: plan.days_per_week,
     fee: parseFloat(plan.fee),
@@ -81,6 +99,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                     alt={`${course.name} course`}
                     fill
                     sizes="(min-width: 1024px) 45vw, 90vw"
+                    preload
                     className="object-cover object-center"
                   />
                 ) : (

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Container, Reveal } from "@/components/ui";
 import { CourseCard } from "@/components/courses/course-card";
-import { fetchCourses, type CourseListItem } from "@/lib/api";
-import { normalize } from "@/lib/courses";
+import type { CourseListItem } from "@/lib/api";
+import { getPublicCourses, normalize } from "@/lib/courses";
 
 /**
  * Fixed set of courses to feature on the homepage, in display order.
@@ -34,7 +34,8 @@ function ArrowRightIcon({ className }: { className?: string }) {
 }
 
 export async function Courses() {
-  const courses = await fetchCourses();
+  // Empty on failure (as before): the section simply hides instead of breaking the homepage.
+  const courses = await getPublicCourses().catch(() => []);
 
   const matched = TARGET_COURSE_NAMES.map((name) =>
     courses.find((c) => normalize(c.name) === normalize(name)),

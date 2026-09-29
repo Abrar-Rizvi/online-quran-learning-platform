@@ -142,11 +142,12 @@ export function About() {
 
         {/* ── Stat strip ── */}
         <Reveal className="mt-16 lg:mt-24">
-          <div className="grid grid-cols-2 gap-8 rounded-[var(--radius-lg)] bg-[var(--surface-alt)] p-8 lg:grid-cols-4 lg:p-12">
+          {/* Tighter padding/gap and a fluid value size below sm keep "Worldwide" inside its tile down to 320px. */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 rounded-[var(--radius-lg)] bg-[var(--surface-alt)] p-5 sm:gap-8 sm:p-8 lg:grid-cols-4 lg:p-12">
             {ABOUT.stats.map((stat, i) => (
-              <Reveal key={stat.label} staggerIndex={i} className="text-center">
+              <Reveal key={stat.label} staggerIndex={i} className="min-w-0 text-center">
                 <span
-                  className="block text-[2rem] font-bold text-[var(--green-900)]"
+                  className="block text-[clamp(1.25rem,6vw,2rem)] font-bold text-[var(--green-900)] sm:text-[2rem]"
                   style={{ fontFamily: "var(--font-heading)", lineHeight: 1.2 }}
                 >
                   {stat.value}

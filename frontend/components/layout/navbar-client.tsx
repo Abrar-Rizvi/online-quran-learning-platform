@@ -84,11 +84,8 @@ export function NavbarClient() {
             ))}
           </div>
 
-          {/* Mobile: CTA + menu button */}
-          <div className="ml-auto flex items-center gap-2 nav:hidden">
-            <Button href="/book-free-trial" variant="primary" size="sm">
-              Book free trial
-            </Button>
+          {/* Mobile: menu button only (both CTAs live in the mobile menu) */}
+          <div className="ml-auto flex items-center nav:hidden">
             <button
               ref={menuButtonRef}
               type="button"

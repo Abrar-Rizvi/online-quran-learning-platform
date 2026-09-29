@@ -1,11 +1,11 @@
 import Image from "next/image";
-import { Badge, Button } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { CourseArt } from "./course-art";
-import { COURSE_IMAGES, normalize, toSlug, getCourseArtTone } from "@/lib/courses";
+import { getCourseImage, toSlug, getCourseArtTone } from "@/lib/courses";
 import type { CourseListItem } from "@/lib/api";
 
 function CourseImage({ course }: { course: CourseListItem }) {
-  const src = COURSE_IMAGES[normalize(course.name)];
+  const src = getCourseImage(course.name);
 
   if (!src) {
     return (
@@ -38,8 +38,6 @@ export function CourseCard({ course }: { course: CourseListItem }) {
       <CourseImage course={course} />
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        {course.category && <Badge variant="green">{course.category}</Badge>}
-
         <h3 className="text-lg font-bold" style={{ fontFamily: "var(--font-body)" }}>
           {course.name}
         </h3>

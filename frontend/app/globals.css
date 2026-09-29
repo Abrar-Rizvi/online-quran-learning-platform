@@ -197,6 +197,19 @@
    BASE STYLES
    ================================================================ */
 
+/*
+ * Tailwind v4 preflight gives buttons cursor: default. Enabled buttons get a pointer here;
+ * disabled ones keep the preflight default. In the base layer, so any explicit cursor-*
+ * utility on an element still wins.
+ */
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
+}
+
 body {
   background-color: var(--bg);
   color: var(--text);

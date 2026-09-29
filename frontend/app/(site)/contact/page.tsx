@@ -4,11 +4,14 @@ import { Container, PageHeader, Reveal } from "@/components/ui";
 import { HeaderFeatureTiles } from "@/components/contact/header-feature-tiles";
 import { ContactInfo } from "@/components/contact/contact-info";
 import { TrialRequestForm } from "@/components/trial/trial-request-form";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Contact Us",
-  description: "Get in touch with Adan Online Academy — call, email, or register for a free Quran class assessment.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Contact",
+  description:
+    "Get in touch with Adan Online Academy — call, email, or register for a free Quran class assessment.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

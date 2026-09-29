@@ -4,6 +4,7 @@ import { ArrowIcon } from "@/components/blog/arrow-icon";
 import { PostCard } from "@/components/blog/post-card";
 import { Button, Container, PageHeader, Reveal } from "@/components/ui";
 import { fetchBlogPosts, type BlogPostPage } from "@/lib/api";
+import { pageMetadata } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
 const DESCRIPTION = "Articles on Quran learning, Tajweed, and raising children with the Quran.";
@@ -34,10 +35,11 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   const page = loaded?.page ?? 1;
   const empty = !loaded || loaded.data.total === 0;
   return {
-    title: page > 1 ? `Blog — Page ${page}` : "Blog",
-    description: DESCRIPTION,
-    alternates: { canonical: page > 1 ? `/blog?page=${page}` : "/blog" },
-    openGraph: { title: "Blog | Adan Online Academy", description: DESCRIPTION, url: "/blog", type: "website" },
+    ...pageMetadata({
+      title: page > 1 ? `Blog — Page ${page}` : "Blog",
+      description: DESCRIPTION,
+      path: page > 1 ? `/blog?page=${page}` : "/blog",
+    }),
     // Nothing to index yet (or the backend is down): keep the page out of search results.
     ...(empty ? { robots: { index: false, follow: true } } : {}),
   };

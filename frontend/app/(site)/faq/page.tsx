@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import { Container, PageHeader, Reveal, WhatsAppCtaCard } from "@/components/ui";
 import { FaqAccordion } from "@/components/faq/faq-accordion";
 import { FAQ_ITEMS } from "@/lib/faq-data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "FAQ",
-  description: "Answers to common questions about Adan Online Academy's live one-to-one online Quran classes.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Frequently Asked Questions",
+  description:
+    "Everything you need to know about our online Quran classes.",
+  path: "/faq",
+});
 
 export default function FaqPage() {
   return (

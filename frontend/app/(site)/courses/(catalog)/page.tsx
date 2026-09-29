@@ -3,21 +3,23 @@ import type { Metadata } from "next";
 import { Container, PageHeader } from "@/components/ui";
 import { CourseGridSkeleton } from "@/components/courses/course-skeleton";
 import { CourseCatalog } from "@/components/courses/course-catalog";
-import { fetchCoursesOrThrow } from "@/lib/api";
+import { getPublicCourses } from "@/lib/courses";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Courses",
   description:
     "Browse every live one-to-one Quran and Islamic studies course offered by Adan Online Academy.",
-};
+  path: "/courses",
+});
 
-// This page throws (via fetchCoursesOrThrow) instead of catching, relying on error.tsx.
+// This page throws (via getPublicCourses) instead of catching, relying on error.tsx.
 // Without this, Next attempts to statically prerender it at build time, which fails the
 // whole build whenever the backend isn't reachable from the build environment.
 export const dynamic = "force-dynamic";
 
 export default async function CoursesPage() {
-  const courses = await fetchCoursesOrThrow();
+  const courses = await getPublicCourses();
 
   return (
     <>

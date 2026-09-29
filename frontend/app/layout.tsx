@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { El_Messiri, Source_Sans_3, Amiri } from "next/font/google";
 import { MotionProvider } from "@/components/motion-provider";
+import { SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const elMessiri = El_Messiri({
@@ -24,21 +25,30 @@ const amiri = Amiri({
   variable: "--font-arabic",
 });
 
+const SITE_TITLE = "Adan Online Academy — Live One-to-One Online Quran Classes";
+const SITE_DESCRIPTION =
+  "Live one-to-one online Quran classes for kids and adults in the US, with male and female teachers and classes in all US time zones. Book a free trial class — no card needed.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://quranclass.us"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    template: "%s | Adan Online Academy",
-    default: "Adan Online Academy — Online Quran Classes",
+    template: `%s | ${SITE_NAME}`,
+    default: SITE_TITLE,
   },
-  description:
-    "Live one-to-one online Quran classes for children and adults. Learn Quran reading, Tajweed, memorization, and Arabic with qualified teachers.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
   openGraph: {
-    title: "Adan Online Academy — Online Quran Classes",
-    description:
-      "Live one-to-one online Quran classes for children and adults. Learn Quran reading, Tajweed, memorization, and Arabic with qualified teachers.",
-    url: "https://quranclass.us",
-    siteName: "Adan Online Academy",
     type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   other: {
     "theme-color": "#0F5C45",

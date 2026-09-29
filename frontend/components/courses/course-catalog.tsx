@@ -6,7 +6,7 @@ import { Reveal } from "@/components/ui";
 import { CourseCard } from "./course-card";
 import { CourseGridSkeleton } from "./course-skeleton";
 import { CourseSearchError, searchCourses, type CourseListItem } from "@/lib/api";
-import { matchesCategory, toCategoryKey, type CategoryKey } from "@/lib/courses";
+import { isPublicCourse, matchesCategory, toCategoryKey, type CategoryKey } from "@/lib/courses";
 import { inputClasses } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -80,7 +80,7 @@ export function CourseCatalog({ initialCourses }: CourseCatalogProps) {
 
     searchCourses(debouncedQuery, controller.signal)
       .then((results) => {
-        setSearchResults(results);
+        setSearchResults(results.filter(isPublicCourse));
         setSearchError(null);
         setResolvedQuery(debouncedQuery);
       })

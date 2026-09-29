@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { Container, PageHeader, Reveal } from "@/components/ui";
 import { TrialRequestForm } from "@/components/trial/trial-request-form";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Book a Free Trial",
   description:
     "Book a free trial with Adan Online Academy — no card needed. Meet your teacher and find the right Quran course.",
-};
+  path: "/book-free-trial",
+});
 
 export default function BookFreeTrialPage() {
   return (

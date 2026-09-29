@@ -11,12 +11,12 @@ import { Container, PageHeader, Reveal } from "@/components/ui";
 import { fetchBlogPost, fetchBlogPosts } from "@/lib/api";
 import { countWords, readingMinutes } from "@/lib/blog-rules";
 import { formatSiteDate, parseApiDate, toIsoDate } from "@/lib/dates";
+// Same origin as metadataBase in app/layout.tsx (JSON-LD needs absolute URLs).
+import { SITE_NAME, SITE_OG_IMAGE, SITE_URL } from "@/lib/seo";
 
 type Params = Promise<{ slug: string }>;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** Same origin as metadataBase in app/layout.tsx (JSON-LD needs absolute URLs). */
-const SITE_URL = "https://quranclass.us";
 
 // generateMetadata and the page share one request per render.
 const getPost = cache(fetchBlogPost);
@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
   const post = res.data;
   const url = `/blog/${post.slug}`;
+  const images = post.cover_image_url ? [{ url: post.cover_image_url, alt: post.title }] : [SITE_OG_IMAGE];
   return {
     title: post.title,
     description: post.excerpt,
@@ -37,11 +38,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       url,
       title: post.title,
       description: post.excerpt,
-      siteName: "Adan Online Academy",
+      siteName: SITE_NAME,
+      locale: "en_US",
       publishedTime: post.published_at ? toIsoDate(post.published_at) : undefined,
       modifiedTime: toIsoDate(post.updated_at),
-      images: post.cover_image_url ? [{ url: post.cover_image_url, alt: post.title }] : undefined,
+      images,
     },
+    twitter: { card: "summary_large_image", title: post.title, description: post.excerpt, images },
   };
 }
 

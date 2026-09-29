@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import { Container, PageHeader, Reveal } from "@/components/ui";
 import { WhatsNextPanel } from "@/components/enroll/whats-next-panel";
 import { EnrollmentForm } from "@/components/enroll/enrollment-form";
-import { fetchCoursesOrThrow } from "@/lib/api";
+import { getPublicCourses } from "@/lib/courses";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Enroll",
-  description: "Enroll in a live one-to-one Quran or Islamic studies course with Adan Online Academy.",
-};
+  description:
+    "Enroll in a live one-to-one Quran or Islamic studies course with Adan Online Academy.",
+  path: "/enroll",
+});
 
 interface EnrollPageProps {
   searchParams: Promise<{ course?: string }>;
@@ -15,7 +18,8 @@ interface EnrollPageProps {
 
 export default async function EnrollPage({ searchParams }: EnrollPageProps) {
   const { course } = await searchParams;
-  const courses = await fetchCoursesOrThrow();
+  // Only public courses: a ?course= slug for a hidden course finds no match and is ignored.
+  const courses = await getPublicCourses();
 
   return (
     <>

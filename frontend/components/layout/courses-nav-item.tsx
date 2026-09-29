@@ -15,7 +15,6 @@ const CATEGORY_LINKS: { label: string; category: Exclude<CategoryKey, "all"> }[]
   { label: "Courses For Adults", category: "adults" },
   { label: "Courses For Females", category: "females" },
   { label: "Language Courses", category: "language" },
-  { label: "Short Courses", category: "short" },
 ];
 
 interface CoursesNavItemProps {
