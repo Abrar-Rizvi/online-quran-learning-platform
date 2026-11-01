@@ -543,6 +543,67 @@ body.menu-open {
   overflow: hidden;
 }
 
+/* Admissions chat: only the phone full-screen sheet locks the page (components/chat/chat-panel.tsx). */
+@media (max-width: 639px) {
+  body.chat-open {
+    overflow: hidden;
+  }
+}
+
+/* ── Admissions chat replies (components/chat/chat-reply.tsx) ───── */
+
+.chat-reply > * + * {
+  margin-top: 0.5rem;
+}
+.chat-reply ul,
+.chat-reply ol {
+  padding-inline-start: 1.25rem;
+}
+.chat-reply ul {
+  list-style: disc;
+}
+.chat-reply ol {
+  list-style: decimal;
+}
+.chat-reply li + li {
+  margin-top: 0.25rem;
+}
+.chat-reply a {
+  color: var(--green-700);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-reply a:hover {
+  color: var(--green-800);
+}
+.chat-reply code {
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 0 0.25rem;
+  font-size: 0.875em;
+}
+.chat-table {
+  overflow-x: auto;
+}
+.chat-table table {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.chat-table th,
+.chat-table td {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  text-align: start;
+  overflow-wrap: normal;
+}
+/* Urdu/Arabic blocks: Arabic-script font, a little larger and taller for legibility. */
+.chat-arabic {
+  font-family: var(--font-arabic), "Traditional Arabic", serif;
+  font-size: 1.1em;
+  line-height: 1.9;
+}
+
 /* ================================================================
    LEGACY — under-construction backdrop (kept until homepage replaces it)
    ================================================================ */

@@ -28,8 +28,8 @@ function omitNode<T extends ExtraProps>(props: T): Omit<T, "node"> {
 const LETTER = /\p{L}/u;
 const ARABIC_SCRIPT = /\p{Script=Arabic}/u;
 
-/** Whether the first letter in a block is Arabic script (Arabic, Urdu, Persian…). */
-function startsWithArabic(node: Element | undefined): boolean {
+/** Whether the first letter in a block is Arabic script (Arabic, Urdu, Persian…). Also used by the chat replies. */
+export function startsWithArabic(node: Element | undefined): boolean {
   const walk = (children: ElementContent[]): boolean | null => {
     for (const child of children) {
       if (child.type === "text") {

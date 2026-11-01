@@ -1,6 +1,7 @@
 import { SkipLink } from "@/components/layout/skip-link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { ChatLauncher } from "@/components/chat/chat-launcher";
 
 export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
@@ -11,6 +12,7 @@ export default function SiteLayout({ children }: LayoutProps<"/">) {
         {children}
       </main>
       <Footer />
+      <ChatLauncher />
     </>
   );
 }

@@ -50,6 +50,9 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
+  verification: {
+    google: "hTXiUQ8Znv_2EQxm5SiDjsj3DdQGwOzV9jEY198JU6w",
+  },
   other: {
     "theme-color": "#0F5C45",
   },
