@@ -379,7 +379,7 @@
 
 ## 2026-09-25 — Admin panel before AI chatbot; blog backend first; readiness-report decisions (roles idea dropped)
 - Phase order: Blog backend (+ public "coming soon" page) → Admin panel (Phase 5) → AI chatbot (Phase 4). No technical dependency blocks this order; the Conversations admin page shows an empty state until the chatbot exists.
-- Admin access: single owner only, exactly as before (ADMIN_USERNAME / ADMIN_PASSWORD / JWT_SECRET_KEY env-based login, existing get_current_admin). The briefly-considered "blog_editor" team role and admin_users table are DROPPED — not to be built.
+- Admin access: single owner only, exactly as before (ADMIN_USERNAME / ADMIN_PASSWORD / JWT_SECRET_KEY env-based login, existing get_current_admin). The briefly-considered "blog_editor" team role and admin_users table are DROPPED — not to be built. SUPERSEDED 2026-11-22 — see the roles entry at the end of this file.
 - Readiness report confirmed registration_no is complete (Postgres sequence, create-branch only, unique, not editable; existing students backfilled AOA-1001–1006; sequence continues from 1007). It is NOT yet in GET /admin/enrollments → add registration_no to AdminEnrollmentStudent as part of the first admin-panel task.
 - Token storage (for the admin panel): JWT in an httpOnly, Secure, SameSite=Lax cookie set by the Next.js server; proxy.ts (Next 16's renamed middleware) guards /admin/*; admin pages are Server Components calling FastAPI server-to-server; any 401 clears the cookie and redirects to /admin/login. localStorage rejected.
 - Admin routes: app/admin/login + app/admin/(panel)/... outside app/(site) (no public Navbar/Footer), noindex.
@@ -410,3 +410,58 @@
 - Preferred time uses a custom picker: hours 01–12, minutes 00/30 only, AM/PM, placeholder "Select your time"; backend accepts only :00/:30 for new submissions (old values stay valid). Classes are 30 minutes.
 - All form errors show inline under their field (client + server 422 mapping); invalid input never returns 500.
 - Navbar: supersedes the 2026-09-18 active-state pill — no persistent active pill; hover pill only; CTA buttons unchanged.
+
+[## 2026-11-22 — SEO expert access: roles, SEO fields, redirects, pages (supersedes the "single owner only" part of 2026-09-25)
+
+### Why
+- The SEO expert (Ahsan, Boostra Marketing Agency) needs to work inside an admin dashboard on his own: edit page content, meta title/description, image alt text, internal links, redirects. The team is growing, so the 2026-09-25 "single owner only / no admin_users table" decision is REVERSED.
+- Domain: quranclass.us IS the Adan Online Academy domain. URLs in the SEO MasterSheet are real Adan URLs.
+
+### Roles and access
+- Two roles: `owner` and `seo_editor`. New `admin_users` table (name, email, hashed password, role, is_active). Only the owner creates/deactivates users.
+- The owner keeps the existing env-based login (ADMIN_USERNAME / ADMIN_PASSWORD / JWT_SECRET_KEY). Do not change it.
+- Permissions are enforced in the BACKEND (403 for forbidden roles), not only by hiding menu items.
+- Add: audit log (who changed what, when, with previous value so a change can be reverted) and login rate limiting (more than one person now logs in).
+- seo_editor CAN: edit course name, description, slug, meta fields and SEO content; create/edit/publish/delete blog posts; create/edit `pages`; edit image alt text; manage redirects.
+- seo_editor CANNOT: enrollments, students, trial requests, chat conversations, analytics/dashboard summary, fees/course plans (revisit if the owner changes his mind), team management. Children's data must never be visible to this role.
+
+### Course name, slug, URL
+- Add a separate `slug` column on courses, independent from the name. Existing 24 courses get their CURRENT slugs unchanged first (no behavior change).
+- Homepage Courses section currently matches by NAME (TARGET_COURSE_NAMES, COURSE_IMAGES in courses.tsx): move it to slug/id BEFORE any rename, otherwise the card silently disappears.
+- When a course name or description is saved, the backend regenerates its embedding (chatbot search uses it).
+- When a slug changes, the old URL is automatically added to redirects (301).
+- "Qaida for Beginners" is REPLACED by "Noorani Qaida Course" (same course, not a new one): new name, slug `noorani-qaida-course`, 301 from `/courses/qaida-for-beginners`. Check `/enroll?course=` links and any hardcoded "Qaida for Beginners" copy.
+- Do the rename only after the slug column + homepage fix + redirects exist.
+
+### SEO fields and pages
+- Courses and `pages` get `meta_title` and `meta_description` (empty = code default, so nothing breaks). Dashboard shows live counters (~60 / ~155 characters).
+- Course gets `seo_content` (Markdown), shown in a fixed "About this course" section after plans and CTA. Raw HTML is never rendered. An H1 inside the content is rendered as H2 (page already has one H1).
+- "Read More" = collapse/expand. Marker `[[read-more]]` in the Markdown, "Insert Read More" button in the editor. The hidden part stays in the HTML (CSS-only collapse, so crawlers see all text); button is keyboard/screen-reader accessible.
+- New `pages` table (FULL path, e.g. `courses/online-quran-classes-for-kids`, title, meta, Markdown body). Route resolves a course first, then falls back to `pages`. Needed because "Quran Classes For Kids" is a content landing page, not a course (still to be confirmed with Ahsan).
+- `image_alts` table (image path -> alt text); shared image component uses DB alt, falls back to the code default. Dashboard flags missing alts. An empty alt is valid only for decorative images.
+- Redirects: `redirects` table, 301 only. Block loops, `/admin`-style paths and external targets. Cached in Next.js, refreshed on save.
+- Internal link picker (search pages/courses/posts). Checkbox for nofollow, default dofollow. Stored in the Markdown as a link title marker, rendered as rel="nofollow"; the editor never types syntax.
+
+### Images
+- Route 1: the expert sends images, the developer places them in `public/images/` and deploys. Dashboard has only a path field, a preview and the alt text.
+- Rules: WebP, around 200 KB or less, keyword-style filenames (e.g. `online-quran-classes-for-kids.webp`).
+- Upload system (Route 2) is built later, when deploys caused only by images exceed about 5 per month. The path field stays valid then.
+
+### Hardcoded pages (Home, About)
+- Whole pages do NOT move to the DB. Only selected text fields go to a `site_content` table (key -> text); code text stays as the default. Built later, when the expert's content is ready.
+- Academy claims (1000+ students, 70+ teachers) and fees are NOT editable here.
+
+### Build order
+1. Roles, admin_users, audit log, rate limiting.
+2. Course slug column, homepage fix, redirects, embedding regeneration.
+3. Rename Noorani Qaida; meta/seo_content/Read More; image_alts; link picker.
+4. `pages` table (after the kids-page question is answered).
+5. Blog editor (open to seo_editor).
+6. Home/About text fields.
+- The pre-launch security items from 2026-09-25 still stand and are separate.
+
+### Open questions
+- Is "Online Quran Classes For Kids" only a content page? (assumed yes)
+- Which page are the Sheet6 keywords for (homepage?)
+- Does the expert also want sitemap, canonical tags, Open Graph, schema?
+- Should seo_editor ever see fees? (currently no)]

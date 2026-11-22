@@ -13,7 +13,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
-from ..auth import get_current_admin
+from ..auth import require_roles
 from ..db import get_session
 from ..models import BlogPost, BlogPostStatus
 from ..models.blog_post import SLUG_MAX_LENGTH
@@ -29,7 +29,11 @@ from ..schemas.blog import (
 )
 
 router = APIRouter(prefix="/blog", tags=["blog"])
-admin_router = APIRouter(prefix="/admin/blog", tags=["admin"])
+admin_router = APIRouter(
+    prefix="/admin/blog",
+    tags=["admin"],
+    dependencies=[Depends(require_roles("owner", "seo_editor"))],
+)
 
 _NOT_FOUND = "Blog post not found"
 
@@ -144,7 +148,6 @@ def get_published_post(
 @admin_router.get("", response_model=list[AdminBlogPostSummary])
 def admin_list_posts(
     status_filter: Optional[BlogPostStatus] = Query(default=None, alias="status"),
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[BlogPost]:
     query = select(BlogPost).order_by(BlogPost.updated_at.desc(), BlogPost.id.desc())
@@ -156,7 +159,6 @@ def admin_list_posts(
 @admin_router.get("/{post_id}", response_model=AdminBlogPostRead)
 def admin_get_post(
     post_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> BlogPost:
     return _get_post_or_404(session, post_id)
@@ -167,7 +169,6 @@ def admin_get_post(
 )
 def admin_create_post(
     payload: BlogPostCreate,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> BlogPost:
     if payload.slug is None:
@@ -194,7 +195,6 @@ def admin_create_post(
 def admin_update_post(
     post_id: int,
     payload: BlogPostUpdate,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> BlogPost:
     post = _get_post_or_404(session, post_id)
@@ -219,7 +219,6 @@ def admin_update_post(
 @admin_router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_post(
     post_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     post = _get_post_or_404(session, post_id)

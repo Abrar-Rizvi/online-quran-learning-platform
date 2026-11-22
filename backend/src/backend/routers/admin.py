@@ -1,7 +1,8 @@
 """Admin-only endpoints: dashboard summary + enrollment management.
 
-Every route in this module requires a valid admin JWT, enforced via the
-``get_current_admin`` dependency (``backend.auth``).
+Every route in this router is owner-only, enforced via the router-level
+``require_roles("owner")`` dependency (``backend.auth``); ``GET /admin/me``
+is the one exception and lives on its own router so it can allow both roles.
 """
 
 from typing import Optional
@@ -12,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from ..auth import get_current_admin
+from ..auth import AdminPrincipal, require_roles
 from ..db import get_session
 from ..models import Conversation, Course, CoursePlan, Enrollment, Message, Student
 from ..models.enrollment import EnrollmentStatus, STATUS_TRANSITIONS, can_transition
@@ -27,9 +28,26 @@ from ..schemas.admin import (
     MessageRead,
     StudentUpdate,
 )
+from ..schemas.admin_user import AdminMeRead
 from ..schemas.student import StudentRead
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(require_roles("owner"))],
+)
+
+me_router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@me_router.get("/me", response_model=AdminMeRead)
+def get_me(
+    principal: AdminPrincipal = Depends(require_roles("owner", "seo_editor")),
+) -> AdminMeRead:
+    return AdminMeRead(
+        name=principal.name, email=principal.email, role=principal.role
+    )
+
 
 _ENROLLMENT_LOADS = (
     selectinload(Enrollment.student),
@@ -69,7 +87,6 @@ def _as_admin_read(enrollment: Enrollment) -> AdminEnrollmentRead:
 
 @router.get("/summary", response_model=AdminSummary)
 def summary(
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> AdminSummary:
     total_students = session.exec(
@@ -99,7 +116,6 @@ def list_enrollments(
     status_filter: Optional[EnrollmentStatus] = Query(
         default=None, alias="status"
     ),
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[AdminEnrollmentRead]:
     query = select(Enrollment).options(*_ENROLLMENT_LOADS).order_by(Enrollment.id)
@@ -116,7 +132,6 @@ def list_enrollments(
 def update_enrollment_status(
     enrollment_id: int,
     payload: EnrollmentStatusUpdate,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> AdminEnrollmentRead:
     enrollment = _load_enrollment(session, enrollment_id)
@@ -157,7 +172,6 @@ def update_enrollment_status(
 )
 def delete_enrollment(
     enrollment_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     enrollment = session.get(Enrollment, enrollment_id)
@@ -170,7 +184,6 @@ def delete_enrollment(
 
 @router.get("/students", response_model=list[StudentRead])
 def list_students(
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[Student]:
     return session.exec(select(Student).order_by(Student.id)).all()
@@ -180,7 +193,6 @@ def list_students(
 def update_student(
     student_id: int,
     payload: StudentUpdate,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> Student:
     student = session.get(Student, student_id)
@@ -250,7 +262,6 @@ def update_student(
 )
 def delete_student(
     student_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     student = session.get(Student, student_id)
@@ -278,7 +289,6 @@ def delete_student(
 
 @router.get("/conversations", response_model=list[ConversationRead])
 def list_conversations(
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[ConversationRead]:
     message_counts = dict(
@@ -309,7 +319,6 @@ def list_conversations(
 )
 def list_conversation_messages(
     conversation_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[MessageRead]:
     conversation = session.get(Conversation, conversation_id)
@@ -342,7 +351,6 @@ def list_conversation_messages(
 )
 def delete_conversation(
     conversation_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     conversation = session.get(Conversation, conversation_id)
@@ -366,7 +374,6 @@ def delete_conversation(
     "/analytics/course-enrollments", response_model=list[CourseEnrollmentCount]
 )
 def course_enrollments_analytics(
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[CourseEnrollmentCount]:
     """Enrollment totals per course (all statuses), most-enrolled first."""

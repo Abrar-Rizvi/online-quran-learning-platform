@@ -1,12 +1,15 @@
-"""Single-admin authentication helpers.
+"""Admin authentication: env-based owner + DB-backed admin users.
 
-Passwords stored in ``ADMIN_PASSWORD`` are plain text (filled in by the
-owner); they are hashed with bcrypt once (cached) rather than requiring a
-pre-hashed value. JWTs carry the admin username and a short lifetime.
+The single-owner env credentials (``ADMIN_USERNAME`` / ``ADMIN_PASSWORD``)
+are checked exactly as before and still issue an owner token. In addition,
+``admin_users`` rows can sign in with ``email`` + password; those tokens carry
+a ``uid`` claim so the user is re-checked (exists + active) on every request.
+JWTs carry the subject, role and (for DB users) user id, with a short lifetime.
 """
 
 import hmac
 import secrets
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Optional
@@ -15,8 +18,11 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
+from sqlmodel import Session
 
 from .config import settings
+from .db import get_session
+from .models import AdminUser, AdminRole
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
@@ -64,9 +70,19 @@ def check_admin_credentials(username: str, password: str) -> bool:
 
 
 def create_access_token(
-    username: str, expires_delta: Optional[timedelta] = None
+    username: str,
+    expires_delta: Optional[timedelta] = None,
+    *,
+    role: str = AdminRole.OWNER.value,
+    user_id: Optional[int] = None,
 ) -> str:
-    """Create a signed JWT for the admin user with a short expiration."""
+    """Create a signed JWT for an admin with a short expiration.
+
+    ``sub`` is the login identifier (owner username or DB user's email). DB
+    users also get a ``uid`` claim; its absence marks the token as the
+    env-based owner. ``role`` is always written so a decoded token can be
+    authorised without another lookup.
+    """
     if not settings.jwt_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -76,7 +92,14 @@ def create_access_token(
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     )
-    payload = {"sub": username, "iat": datetime.now(timezone.utc), "exp": expire}
+    payload = {
+        "sub": username,
+        "iat": datetime.now(timezone.utc),
+        "exp": expire,
+        "role": role,
+    }
+    if user_id is not None:
+        payload["uid"] = user_id
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=ALGORITHM)
 
 
@@ -102,13 +125,32 @@ def decode_access_token(token: str) -> dict:
         ) from exc
 
 
+@dataclass(frozen=True)
+class AdminPrincipal:
+    """The authenticated admin behind a request.
+
+    ``user_id`` is ``None`` for the env-based owner; DB users carry their
+    ``admin_users.id`` and their name/email/role come from the database (so a
+    deactivation or role change is honoured immediately).
+    """
+
+    user_id: Optional[int]
+    name: str
+    email: Optional[str]
+    role: str
+
+
 def get_current_admin(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_security),
-) -> str:
-    """FastAPI dependency that returns the authenticated admin username.
+    session: Session = Depends(get_session),
+) -> AdminPrincipal:
+    """FastAPI dependency that returns the authenticated admin principal.
 
-    Extracts the bearer token from the Authorization header and verifies it;
-    raises 401 when the token is missing, malformed, invalid or expired.
+    Extracts the bearer token and verifies it; raises 401 when the token is
+    missing, malformed, invalid or expired. Tokens without a ``uid`` claim are
+    the env-based owner (role defaults to ``owner``); tokens with a ``uid``
+    are re-checked against ``admin_users`` on every request so deactivation
+    takes effect immediately even with a still-valid token.
     """
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(
@@ -125,4 +167,42 @@ def get_current_admin(
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return username
+
+    role = payload.get("role") or AdminRole.OWNER.value
+    user_id = payload.get("uid")
+
+    if user_id is None:
+        return AdminPrincipal(user_id=None, name=username, email=None, role=role)
+
+    user = session.get(AdminUser, user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return AdminPrincipal(
+        user_id=user.id, name=user.name, email=user.email, role=user.role
+    )
+
+
+def require_roles(*roles: str):
+    """Dependency factory: 403 unless the current admin holds one of ``roles``.
+
+    Applied at the router level for owner-only /admin routes (fail-closed
+    default) and overridden on the blog router for ``owner`` + ``seo_editor``.
+    """
+
+    allowed = set(roles)
+
+    def _require(
+        principal: AdminPrincipal = Depends(get_current_admin),
+    ) -> AdminPrincipal:
+        if principal.role not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return principal
+
+    return _require

@@ -1,3 +1,9 @@
+from .admin_user import (
+    DEFAULT_ADMIN_ROLE,
+    VALID_ADMIN_ROLES,
+    AdminRole,
+    AdminUser,
+)
 from .blog_post import (
     DEFAULT_BLOG_POST_STATUS,
     VALID_BLOG_POST_STATUSES,
@@ -27,14 +33,18 @@ from .trial_request import (
 )
 
 __all__ = [
+    "DEFAULT_ADMIN_ROLE",
     "DEFAULT_BLOG_POST_STATUS",
     "DEFAULT_ENROLLMENT_STATUS",
     "DEFAULT_TRIAL_REQUEST_STATUS",
     "STATUS_TRANSITIONS",
     "TRIAL_REQUEST_TRANSITIONS",
+    "VALID_ADMIN_ROLES",
     "VALID_BLOG_POST_STATUSES",
     "VALID_ENROLLMENT_STATUSES",
     "VALID_TRIAL_REQUEST_STATUSES",
+    "AdminRole",
+    "AdminUser",
     "BlogPost",
     "BlogPostStatus",
     "Conversation",

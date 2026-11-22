@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, select
 
-from ..auth import get_current_admin
+from ..auth import require_roles
 from ..db import get_session
 from ..models import (
     TRIAL_REQUEST_TRANSITIONS,
@@ -22,7 +22,11 @@ from ..schemas import (
 )
 
 router = APIRouter(prefix="/trial-requests", tags=["trial-requests"])
-admin_router = APIRouter(prefix="/admin/trial-requests", tags=["admin"])
+admin_router = APIRouter(
+    prefix="/admin/trial-requests",
+    tags=["admin"],
+    dependencies=[Depends(require_roles("owner"))],
+)
 
 _NOT_FOUND = "Trial request not found"
 
@@ -56,7 +60,6 @@ def create_trial_request(
 @admin_router.get("", response_model=list[AdminTrialRequestRead])
 def admin_list_trial_requests(
     status_filter: Optional[TrialRequestStatus] = Query(default=None, alias="status"),
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> list[TrialRequest]:
     """All trial requests, newest first (not paginated); optional ?status filter."""
@@ -72,7 +75,6 @@ def admin_list_trial_requests(
 def admin_update_trial_request_status(
     trial_request_id: int,
     payload: TrialRequestStatusUpdate,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> TrialRequest:
     trial_request = session.get(TrialRequest, trial_request_id)
@@ -108,7 +110,6 @@ def admin_update_trial_request_status(
 @admin_router.delete("/{trial_request_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_trial_request(
     trial_request_id: int,
-    _admin: str = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     trial_request = session.get(TrialRequest, trial_request_id)

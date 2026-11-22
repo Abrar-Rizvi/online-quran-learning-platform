@@ -9,6 +9,7 @@ from .auth import warm_admin_hash
 from .config import settings
 from .routers import (
     admin_blog_router,
+    admin_me_router,
     admin_trial_requests_router,
     admin_router,
     auth_router,
@@ -118,6 +119,7 @@ log.info(
 )
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(admin_me_router)
 app.include_router(admin_blog_router)
 app.include_router(admin_trial_requests_router)
 
