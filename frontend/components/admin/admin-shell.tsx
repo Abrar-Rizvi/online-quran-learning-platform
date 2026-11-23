@@ -7,7 +7,7 @@ import { logout } from "@/app/admin/actions";
 import { Logo } from "@/components/layout/logo";
 import { IslamicPattern } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { roleLabel } from "@/lib/admin-role";
+import { roleLabel, SEO_EDITOR_ROLE } from "@/lib/admin-role";
 import { CloseIcon, ExternalLinkIcon, LogoutIcon, MenuIcon } from "./admin-icons";
 import { adminNavForRole, getAdminSectionTitle, isAdminNavActive, type AdminNavItem } from "./admin-nav";
 import { ToastProvider } from "./ui/toast";
@@ -25,7 +25,7 @@ const itemBase = cn(
 );
 const itemIdle = "text-[var(--green-200)] hover:bg-white/[0.06] hover:text-white";
 
-function AdminBrand() {
+function AdminBrand({ role }: { role?: string }) {
   return (
     <div className="flex items-center gap-2">
       <Logo
@@ -35,7 +35,7 @@ function AdminBrand() {
         className="min-h-11 shrink-0"
       />
       <span className="rounded-[var(--radius-full)] border border-[var(--gold-400)] px-2 py-0.5 text-[11px] font-medium text-[var(--gold-400)]">
-        Admin
+        {role === SEO_EDITOR_ROLE ? "Editor" : "Admin"}
       </span>
     </div>
   );
@@ -199,7 +199,7 @@ export function AdminShell({
           variant="detailed"
         />
         <div className="relative flex h-16 shrink-0 items-center border-b border-white/10 px-4">
-          <AdminBrand />
+          <AdminBrand role={user?.role} />
         </div>
         <SidebarContent pathname={pathname} navItems={navItems} user={user} />
       </aside>
@@ -291,7 +291,7 @@ export function AdminShell({
               variant="detailed"
             />
             <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-white/10 pl-4 pr-2">
-              <AdminBrand />
+              <AdminBrand role={user?.role} />
               <button
                 type="button"
                 onClick={closeDrawer}

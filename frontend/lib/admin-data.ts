@@ -14,6 +14,16 @@ export interface AdminMe {
   role: string;
 }
 
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  last_login_at: string | null;
+  created_at: string;
+}
+
 export type EnrollmentStatusValue = "on_trial" | "active" | "cancelled" | "alumni";
 
 export interface AdminSummary {
@@ -94,6 +104,7 @@ export interface AdminConversation {
  */
 export const getAdminSummary = cache(() => adminFetch<AdminSummary>("/admin/summary"));
 export const getAdminMe = cache(() => adminFetch<AdminMe>("/admin/me"));
+export const getAdminUsers = cache(() => adminFetch<AdminUser[]>("/admin/users"));
 export const getAdminEnrollments = cache(() => adminFetch<AdminEnrollment[]>("/admin/enrollments"));
 export const getAdminStudents = cache(() => adminFetch<AdminStudent[]>("/admin/students"));
 export const getCourseEnrollmentCounts = cache(() =>

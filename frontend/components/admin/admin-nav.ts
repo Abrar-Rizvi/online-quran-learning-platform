@@ -1,13 +1,14 @@
 import type { ComponentType } from "react";
 import {
   BlogIcon,
+  ClockIcon,
   ConversationsIcon,
   DashboardIcon,
   EnrollmentsIcon,
   InboxIcon,
   StudentsIcon,
 } from "./admin-icons";
-import { SEO_EDITOR_ROLE } from "@/lib/admin-role";
+import { OWNER_ROLE, SEO_EDITOR_ROLE } from "@/lib/admin-role";
 
 export interface AdminNavItem {
   label: string;
@@ -23,20 +24,22 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: "Students", href: "/admin/students", icon: StudentsIcon },
   { label: "Conversations", href: "/admin/conversations", icon: ConversationsIcon },
   { label: "Blog", href: "/admin/blog", icon: BlogIcon },
+  { label: "Team", href: "/admin/team", icon: StudentsIcon },
+  { label: "Activity", href: "/admin/activity", icon: ClockIcon },
 ];
 
 /** Sections an seo_editor may see (backend still enforces the real permission). */
 const SEO_EDITOR_HREFS = new Set(["/admin/blog"]);
+const OWNER_ONLY_HREFS = new Set(["/admin/team", "/admin/activity"]);
 
 /**
- * The nav items for a role. Owners (and an unknown role, e.g. while the
- * backend is unreachable) see everything; seo_editor sees only the blog.
+ * Editors see Blog. Team and Activity appear when the owner's role is confirmed.
  */
 export function adminNavForRole(role: string | null | undefined): AdminNavItem[] {
   if (role === SEO_EDITOR_ROLE) {
     return ADMIN_NAV.filter((item) => SEO_EDITOR_HREFS.has(item.href));
   }
-  return ADMIN_NAV;
+  return role === OWNER_ROLE ? ADMIN_NAV : ADMIN_NAV.filter((item) => !OWNER_ONLY_HREFS.has(item.href));
 }
 
 /** Dashboard only matches exactly; every other section also owns its sub-pages. */
