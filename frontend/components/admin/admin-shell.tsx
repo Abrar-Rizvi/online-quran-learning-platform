@@ -7,8 +7,9 @@ import { logout } from "@/app/admin/actions";
 import { Logo } from "@/components/layout/logo";
 import { IslamicPattern } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { roleLabel } from "@/lib/admin-role";
 import { CloseIcon, ExternalLinkIcon, LogoutIcon, MenuIcon } from "./admin-icons";
-import { ADMIN_NAV, getAdminSectionTitle, isAdminNavActive } from "./admin-nav";
+import { adminNavForRole, getAdminSectionTitle, isAdminNavActive, type AdminNavItem } from "./admin-nav";
 import { ToastProvider } from "./ui/toast";
 
 const FOCUSABLE =
@@ -40,13 +41,33 @@ function AdminBrand() {
   );
 }
 
+export interface AdminShellUser {
+  name: string;
+  email: string | null;
+  role: string;
+}
+
+/** The signed-in admin's name + role, shown above Log out on the dark sidebar. */
+function SidebarUser({ name, role }: { name: string; role: string }) {
+  return (
+    <div className="mb-3 rounded-[var(--radius-sm)] bg-white/[0.06] px-3 py-2.5">
+      <p className="truncate text-sm font-medium text-white">{name}</p>
+      <p className="mt-0.5 truncate text-xs text-[var(--gold-400)]">{roleLabel(role)}</p>
+    </div>
+  );
+}
+
 /** Nav list + Log out, shared by the desktop sidebar and the mobile drawer. */
 function SidebarContent({
   pathname,
+  navItems,
+  user,
   onNavigate,
   showWebsiteLink = false,
 }: {
   pathname: string;
+  navItems: AdminNavItem[];
+  user: AdminShellUser | null;
   onNavigate?: () => void;
   showWebsiteLink?: boolean;
 }) {
@@ -54,7 +75,7 @@ function SidebarContent({
     <>
       <nav aria-label="Admin" className="relative flex-1 overflow-y-auto px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {ADMIN_NAV.map(({ label, href, icon: Icon }) => {
+          {navItems.map(({ label, href, icon: Icon }) => {
             const active = isAdminNavActive(href, pathname);
             return (
               <li key={href}>
@@ -80,6 +101,7 @@ function SidebarContent({
       </nav>
 
       <div className="relative border-t border-white/10 px-3 py-4">
+        {user && <SidebarUser name={user.name} role={user.role} />}
         {showWebsiteLink && (
           <a
             href="/"
@@ -103,9 +125,18 @@ function SidebarContent({
   );
 }
 
-export function AdminShell({ today, children }: { today: string; children: React.ReactNode }) {
+export function AdminShell({
+  today,
+  user,
+  children,
+}: {
+  today: string;
+  user: AdminShellUser | null;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const title = getAdminSectionTitle(pathname);
+  const navItems = adminNavForRole(user?.role);
 
   // The drawer remembers the path it was opened on, so any navigation closes it.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
@@ -170,7 +201,7 @@ export function AdminShell({ today, children }: { today: string; children: React
         <div className="relative flex h-16 shrink-0 items-center border-b border-white/10 px-4">
           <AdminBrand />
         </div>
-        <SidebarContent pathname={pathname} />
+        <SidebarContent pathname={pathname} navItems={navItems} user={user} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
@@ -273,7 +304,7 @@ export function AdminShell({ today, children }: { today: string; children: React
                 <CloseIcon />
               </button>
             </div>
-            <SidebarContent pathname={pathname} onNavigate={() => setOpenedOn(null)} showWebsiteLink />
+            <SidebarContent pathname={pathname} navItems={navItems} user={user} onNavigate={() => setOpenedOn(null)} showWebsiteLink />
           </div>
         </div>
       )}

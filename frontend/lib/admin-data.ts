@@ -1,9 +1,18 @@
 import "server-only";
 
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import { adminFetch } from "./admin-api";
+import { SEO_EDITOR_ROLE } from "./admin-role";
 
 /** Response shapes of the admin endpoints (see backend/api_information.txt). */
+
+/** GET /admin/me: the authenticated admin's identity + role. */
+export interface AdminMe {
+  name: string;
+  email: string | null;
+  role: string;
+}
 
 export type EnrollmentStatusValue = "on_trial" | "active" | "cancelled" | "alumni";
 
@@ -84,6 +93,7 @@ export interface AdminConversation {
  * dashboard widgets share one backend request per endpoint per page load.
  */
 export const getAdminSummary = cache(() => adminFetch<AdminSummary>("/admin/summary"));
+export const getAdminMe = cache(() => adminFetch<AdminMe>("/admin/me"));
 export const getAdminEnrollments = cache(() => adminFetch<AdminEnrollment[]>("/admin/enrollments"));
 export const getAdminStudents = cache(() => adminFetch<AdminStudent[]>("/admin/students"));
 export const getCourseEnrollmentCounts = cache(() =>
@@ -95,3 +105,15 @@ export const getAdminTrialRequests = cache(() => adminFetch<AdminTrialRequest[]>
 export const getAdminConversations = cache(() =>
   adminFetch<AdminConversation[]>("/admin/conversations"),
 );
+
+/**
+ * Owner-only route guard. seo_editor is sent to the blog (their only section);
+ * other roles and a failed /admin/me (backend down) pass through so the page's
+ * own fetch can show its error. The 401 path is handled inside adminFetch.
+ */
+export async function requireOwnerRole(): Promise<void> {
+  const me = await getAdminMe();
+  if (me.ok && me.data.role === SEO_EDITOR_ROLE) {
+    redirect("/admin/blog");
+  }
+}

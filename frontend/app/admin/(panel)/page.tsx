@@ -8,6 +8,7 @@ import { StatusBreakdown } from "@/components/admin/dashboard/status-breakdown";
 import { WeeklyEnrollments } from "@/components/admin/dashboard/weekly-enrollments";
 import { WelcomeBand } from "@/components/admin/dashboard/welcome-band";
 import { WidgetSkeleton } from "@/components/admin/dashboard/widget";
+import { requireOwnerRole } from "@/lib/admin-data";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -18,7 +19,9 @@ export const metadata: Metadata = {
  * boundary: they fetch in parallel (memoized per request, see lib/admin-data)
  * and a failing endpoint only affects its own card.
  */
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  await requireOwnerRole();
+
   return (
     <div className="mx-auto flex max-w-[1400px] flex-col gap-6 lg:gap-8">
       <Suspense fallback={<WidgetSkeleton className="rounded-[var(--radius-xl)]" bodyClassName="h-16" />}>

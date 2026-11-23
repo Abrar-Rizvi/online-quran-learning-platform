@@ -9,7 +9,8 @@ import { Pagination } from "@/components/admin/ui/pagination";
 import { SearchInput } from "@/components/admin/ui/search-input";
 import { TabLinks } from "@/components/admin/ui/tab-links";
 import { ViewDetailsLink } from "@/components/admin/ui/view-details-link";
-import { getAdminEnrollments, getAdminStudents } from "@/lib/admin-data";
+import { getAdminEnrollments, getAdminStudents, requireOwnerRole } from "@/lib/admin-data";
+import { ForbiddenNotice } from "@/components/admin/forbidden";
 import {
   SORT_OPTIONS,
   STUDENTS_PAGE_SIZE,
@@ -56,10 +57,12 @@ function EnrollmentSummary({ enrollments }: { enrollments: StudentRow["enrollmen
  * sheet (refresh-safe); ?edit=1 opens it straight into edit mode.
  */
 export default async function AdminStudentsPage({ searchParams }: PageProps<"/admin/students">) {
+  await requireOwnerRole();
   const query = parseStudentsQuery(await searchParams);
   const [students, enrollments] = await Promise.all([getAdminStudents(), getAdminEnrollments()]);
 
   if (!students.ok) {
+    if (students.status === 403) return <ForbiddenNotice />;
     return <WidgetError title="Students" retryHref={studentsHref(query)} />;
   }
 

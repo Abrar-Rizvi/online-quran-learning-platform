@@ -8,7 +8,8 @@ import { StatusBadge } from "@/components/admin/status";
 import { Pagination } from "@/components/admin/ui/pagination";
 import { SearchInput } from "@/components/admin/ui/search-input";
 import { TabLinks } from "@/components/admin/ui/tab-links";
-import { getAdminEnrollments, getAdminStudents } from "@/lib/admin-data";
+import { getAdminEnrollments, getAdminStudents, requireOwnerRole } from "@/lib/admin-data";
+import { ForbiddenNotice } from "@/components/admin/forbidden";
 import {
   ENROLLMENTS_PAGE_SIZE,
   STATUS_TABS,
@@ -41,10 +42,12 @@ function Message({ title, children }: { title: string; children?: React.ReactNod
  * detail sheet — refresh-safe and always rendered from fresh data.
  */
 export default async function AdminEnrollmentsPage({ searchParams }: PageProps<"/admin/enrollments">) {
+  await requireOwnerRole();
   const query = parseEnrollmentsQuery(await searchParams);
   const [enrollments, students] = await Promise.all([getAdminEnrollments(), getAdminStudents()]);
 
   if (!enrollments.ok) {
+    if (enrollments.status === 403) return <ForbiddenNotice />;
     return <WidgetError title="Enrollments" retryHref={enrollmentsHref(query)} />;
   }
 

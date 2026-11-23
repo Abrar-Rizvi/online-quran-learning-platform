@@ -33,7 +33,7 @@ export function LoginForm({ next, expired }: { next: string; expired: boolean })
         )}
       </div>
 
-      <FormField label="Username" htmlFor="admin-username" required>
+      <FormField label="Username or email" htmlFor="admin-username" required>
         <input
           id="admin-username"
           name="username"

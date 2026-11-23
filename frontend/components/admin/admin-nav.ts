@@ -7,6 +7,7 @@ import {
   InboxIcon,
   StudentsIcon,
 } from "./admin-icons";
+import { SEO_EDITOR_ROLE } from "@/lib/admin-role";
 
 export interface AdminNavItem {
   label: string;
@@ -23,6 +24,20 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: "Conversations", href: "/admin/conversations", icon: ConversationsIcon },
   { label: "Blog", href: "/admin/blog", icon: BlogIcon },
 ];
+
+/** Sections an seo_editor may see (backend still enforces the real permission). */
+const SEO_EDITOR_HREFS = new Set(["/admin/blog"]);
+
+/**
+ * The nav items for a role. Owners (and an unknown role, e.g. while the
+ * backend is unreachable) see everything; seo_editor sees only the blog.
+ */
+export function adminNavForRole(role: string | null | undefined): AdminNavItem[] {
+  if (role === SEO_EDITOR_ROLE) {
+    return ADMIN_NAV.filter((item) => SEO_EDITOR_HREFS.has(item.href));
+  }
+  return ADMIN_NAV;
+}
 
 /** Dashboard only matches exactly; every other section also owns its sub-pages. */
 export function isAdminNavActive(href: string, pathname: string): boolean {

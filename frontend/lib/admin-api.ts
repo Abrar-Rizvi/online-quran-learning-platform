@@ -1,5 +1,6 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ADMIN_LOGIN_PATH, ADMIN_LOGOUT_PATH } from "./admin-auth";
 import { getAdminToken } from "./admin-session";
@@ -69,6 +70,16 @@ export async function adminFetch<T>(
 
   if (!res.ok) {
     const { message, detail } = await readDetail(res);
+    // 403 means the token is valid but the role can't access this endpoint.
+    // It is never a logout — show a calm message instead.
+    if (res.status === 403) {
+      return {
+        ok: false,
+        status: res.status,
+        message: "You don't have permission to view this.",
+        detail,
+      };
+    }
     return {
       ok: false,
       status: res.status,
@@ -93,10 +104,17 @@ export async function requestAdminToken(
   password: string,
 ): Promise<AdminLoginResult> {
   try {
+    // Forward the visitor's IP so the backend's per-IP login lockout sees it,
+    // not the Next.js server's IP. Taken from the incoming request's
+    // X-Forwarded-For (left unset when absent).
+    const forwardedFor = (await headers()).get("x-forwarded-for");
     const res = await fetch(`${BASE_URL}/auth/login`, {
       method: "POST",
       cache: "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
+      },
       body: JSON.stringify({ username, password }),
     });
 

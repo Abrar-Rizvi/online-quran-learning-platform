@@ -9,7 +9,8 @@ import { Pagination } from "@/components/admin/ui/pagination";
 import { SearchInput } from "@/components/admin/ui/search-input";
 import { TabLinks } from "@/components/admin/ui/tab-links";
 import { ViewDetailsLink } from "@/components/admin/ui/view-details-link";
-import { getAdminStudents, getAdminTrialRequests } from "@/lib/admin-data";
+import { getAdminStudents, getAdminTrialRequests, requireOwnerRole } from "@/lib/admin-data";
+import { ForbiddenNotice } from "@/components/admin/forbidden";
 import {
   TRIAL_REQUESTS_PAGE_SIZE,
   TRIAL_TABS,
@@ -47,10 +48,12 @@ function Message({ title, children }: { title: string; children?: React.ReactNod
  * detail sheet; ?enroll=1 opens it on the "Enroll this student" form.
  */
 export default async function AdminTrialRequestsPage({ searchParams }: PageProps<"/admin/trial-requests">) {
+  await requireOwnerRole();
   const query = parseTrialRequestsQuery(await searchParams);
   const [requests, students] = await Promise.all([getAdminTrialRequests(), getAdminStudents()]);
 
   if (!requests.ok) {
+    if (requests.status === 403) return <ForbiddenNotice />;
     return <WidgetError title="Trial requests" retryHref={trialRequestsHref(query)} />;
   }
 
