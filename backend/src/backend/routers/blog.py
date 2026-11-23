@@ -8,12 +8,13 @@ disabled, otherwise a post could inject HTML/script into the site.
 import re
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
-from ..auth import require_roles
+from ..audit import snapshot, write_audit
+from ..auth import AdminPrincipal, get_current_admin, require_roles
 from ..db import get_session
 from ..models import BlogPost, BlogPostStatus
 from ..models.blog_post import SLUG_MAX_LENGTH
@@ -79,12 +80,35 @@ def _stamp_first_publish(post: BlogPost) -> None:
         post.published_at = utcnow()
 
 
-def _commit_post(session: Session, post: BlogPost) -> BlogPost:
+def _commit_post(
+    session: Session,
+    post: BlogPost,
+    *,
+    principal: AdminPrincipal,
+    request: Request,
+    action: str,
+    before: dict | None = None,
+) -> BlogPost:
     session.add(post)
+    try:
+        session.flush()
+    except IntegrityError:
+        # Only the slug is unique — a concurrent create/update took it first.
+        session.rollback()
+        raise _slug_conflict(post.slug)
+    write_audit(
+        session,
+        principal,
+        action,
+        "blog_post",
+        str(post.id),
+        before,
+        snapshot(post),
+        request,
+    )
     try:
         session.commit()
     except IntegrityError:
-        # Only the slug is unique — a concurrent create/update took it first.
         session.rollback()
         raise _slug_conflict(post.slug)
     session.refresh(post)
@@ -169,6 +193,8 @@ def admin_get_post(
 )
 def admin_create_post(
     payload: BlogPostCreate,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> BlogPost:
     if payload.slug is None:
@@ -188,13 +214,17 @@ def admin_create_post(
         status=payload.status.value,
     )
     _stamp_first_publish(post)
-    return _commit_post(session, post)
+    return _commit_post(
+        session, post, principal=principal, request=request, action="blog.create"
+    )
 
 
 @admin_router.patch("/{post_id}", response_model=AdminBlogPostRead)
 def admin_update_post(
     post_id: int,
     payload: BlogPostUpdate,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> BlogPost:
     post = _get_post_or_404(session, post_id)
@@ -211,16 +241,35 @@ def admin_update_post(
     if "status" in updates:
         updates["status"] = updates["status"].value
 
+    before = snapshot(post)
+    # Publish/unpublish are captured as distinct actions (a status change on the
+    # same update endpoint); any other edit is a plain "blog.update".
+    action = "blog.update"
+    if "status" in updates:
+        action = (
+            "blog.publish"
+            if updates["status"] == BlogPostStatus.PUBLISHED.value
+            else "blog.unpublish"
+        )
+
     post.sqlmodel_update(updates)
     _stamp_first_publish(post)
-    return _commit_post(session, post)
+    return _commit_post(
+        session, post, principal=principal, request=request, action=action, before=before
+    )
 
 
 @admin_router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_post(
     post_id: int,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     post = _get_post_or_404(session, post_id)
+    before = snapshot(post)
     session.delete(post)
+    write_audit(
+        session, principal, "blog.delete", "blog_post", str(post.id), before, None, request
+    )
     session.commit()

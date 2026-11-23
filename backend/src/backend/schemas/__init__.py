@@ -9,7 +9,8 @@ from .admin import (
     MessageRead,
     StudentUpdate,
 )
-from .admin_user import AdminMeRead, AdminUserCreate
+from .admin_user import AdminMeRead, AdminUserCreate, AdminUserRead, AdminUserUpdate
+from .audit_log import AuditLogPage, AuditLogRead
 from .auth import LoginRequest, TokenResponse
 from .blog import (
     AdminBlogPostRead,
@@ -39,6 +40,10 @@ __all__ = [
     "AdminMeRead",
     "AdminSummary",
     "AdminUserCreate",
+    "AdminUserRead",
+    "AdminUserUpdate",
+    "AuditLogPage",
+    "AuditLogRead",
     "BlogPostCreate",
     "BlogPostPage",
     "BlogPostPublic",

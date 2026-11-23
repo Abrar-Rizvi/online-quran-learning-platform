@@ -14,15 +14,16 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import jwt
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from backend.auth import ACCESS_TOKEN_EXPIRE_HOURS, ALGORITHM
 from backend.config import settings
-from backend.db import engine
 from backend.main import app
 from backend.models import AdminUser, BlogPost
 from backend.security import hash_password
+from tests.base import reset_login_attempts, test_engine
 
 EDITOR_PASSWORD = "editor-test-password-123"
 
@@ -45,9 +46,51 @@ def _admin_paths() -> dict:
     return app.openapi()["paths"]
 
 
+def _roles_of_depends(fn):
+    """Extract the allowed-roles set captured by a require_roles closure."""
+    if fn is None:
+        return set()
+    if hasattr(fn, "dependency"):
+        fn = fn.dependency
+    found = set()
+    for cell in getattr(fn, "__closure__", None) or ():
+        value = cell.cell_contents
+        if isinstance(value, (set, frozenset)) and set(value) <= {"owner", "seo_editor"}:
+            found |= set(value)
+    return found
+
+
+def _route_roles(route) -> set:
+    roles = set()
+    for dep in getattr(route, "dependencies", []) or []:
+        roles |= _roles_of_depends(dep)
+    dependant = getattr(route, "dependant", None)
+    for dep in getattr(dependant, "dependencies", []) or []:
+        roles |= _roles_of_depends(getattr(dep, "call", None))
+    return roles or {"(unknown)"}
+
+
+def _admin_route_roles():
+    """Yield (method, path, sorted roles) for every /admin route, in order."""
+    rows = []
+    for r in app.router.routes:
+        orig = getattr(r, "original_router", None)
+        routes = getattr(orig, "routes", []) if orig is not None else []
+        for route in routes:
+            if not isinstance(route, APIRoute):
+                continue
+            if not route.path.startswith("/admin"):
+                continue
+            roles = sorted(_route_roles(route))
+            for method in sorted(route.methods):
+                rows.append((method.upper(), route.path, roles))
+    return sorted(rows)
+
+
 class AdminAccessTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        reset_login_attempts()
         cls.client = TestClient(app)
 
         # Env-based owner login (also proves the unchanged owner path works).
@@ -60,7 +103,7 @@ class AdminAccessTest(unittest.TestCase):
 
         # Create a seo_editor directly in the DB (no user-management endpoints yet).
         cls.editor_email = f"seo-test-{uuid.uuid4().hex}@example.com"
-        with Session(engine) as session:
+        with Session(test_engine) as session:
             editor = AdminUser(
                 name="SEO Test Editor",
                 email=cls.editor_email,
@@ -82,12 +125,12 @@ class AdminAccessTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        with Session(engine) as session:
+        with Session(test_engine) as session:
             user = session.get(AdminUser, cls.editor_id)
             if user is not None:
                 session.delete(user)
                 session.commit()
-        engine.dispose()
+        test_engine.dispose()
 
     # ── (a) seo_editor gets 403 on every /admin route except blog + /admin/me
     def test_seo_editor_forbidden_on_owner_routes(self):
@@ -104,7 +147,8 @@ class AdminAccessTest(unittest.TestCase):
                 url = path.replace("{enrollment_id}", "1") \
                            .replace("{student_id}", "1") \
                            .replace("{conversation_id}", "1") \
-                           .replace("{trial_request_id}", "1")
+                           .replace("{trial_request_id}", "1") \
+                           .replace("{user_id}", "1")
                 with self.subTest(method=method, path=path):
                     resp = self.client.request(
                         method,
@@ -124,7 +168,7 @@ class AdminAccessTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
 
         # Create a post as the owner so the editor can GET it by id.
-        with Session(engine) as session:
+        with Session(test_engine) as session:
             post = BlogPost(
                 title="SEO access test post",
                 slug=f"seo-access-test-{uuid.uuid4().hex[:8]}",
@@ -143,7 +187,7 @@ class AdminAccessTest(unittest.TestCase):
             )
             self.assertEqual(resp.status_code, 200, resp.text)
         finally:
-            with Session(engine) as session:
+            with Session(test_engine) as session:
                 post = session.get(BlogPost, post_id)
                 if post is not None:
                     session.delete(post)
@@ -159,7 +203,7 @@ class AdminAccessTest(unittest.TestCase):
     # ── (c) deactivated editor with a still-valid token gets 401
     def test_deactivated_editor_token_rejected(self):
         email = f"seo-deactivated-{uuid.uuid4().hex}@example.com"
-        with Session(engine) as session:
+        with Session(test_engine) as session:
             editor = AdminUser(
                 name="SEO Deactivated",
                 email=email,
@@ -179,7 +223,7 @@ class AdminAccessTest(unittest.TestCase):
         token = login.json()["access_token"]
 
         try:
-            with Session(engine) as session:
+            with Session(test_engine) as session:
                 editor = session.get(AdminUser, editor_id)
                 editor.is_active = False
                 session.add(editor)
@@ -188,7 +232,7 @@ class AdminAccessTest(unittest.TestCase):
             resp = self.client.get("/admin/me", headers=_auth(token))
             self.assertEqual(resp.status_code, 401, resp.text)
         finally:
-            with Session(engine) as session:
+            with Session(test_engine) as session:
                 editor = session.get(AdminUser, editor_id)
                 if editor is not None:
                     session.delete(editor)
@@ -229,6 +273,47 @@ class AdminAccessTest(unittest.TestCase):
         body = resp.json()
         self.assertEqual(body["role"], "owner")
         self.assertIsNone(body["email"])
+
+    # ── (g) route/role table: no non-blog /admin route is seo_editor-reachable
+    def test_admin_route_role_table(self):
+        """Enumerate every /admin route + its enforced roles and flag any
+        non-blog, non-/admin/me route that an seo_editor could reach."""
+        reachable_by_editor = []
+        for method, path, roles in _admin_route_roles():
+            if "seo_editor" in roles and not path.startswith("/admin/blog") and path != "/admin/me":
+                reachable_by_editor.append((method, path, roles))
+        self.assertEqual(
+            reachable_by_editor,
+            [],
+            "seo_editor can reach non-blog /admin routes: "
+            + repr(reachable_by_editor),
+        )
+
+    # ── (h) no response body leaks the password_hash column
+    def test_no_response_body_contains_password_hash(self):
+        probes = [
+            ("GET", "/admin/summary"),
+            ("GET", "/admin/students"),
+            ("GET", "/admin/enrollments"),
+            ("GET", "/admin/conversations"),
+            ("GET", "/admin/trial-requests"),
+            ("GET", "/admin/blog"),
+            ("GET", "/admin/me"),
+            ("GET", "/admin/analytics/course-enrollments"),
+        ]
+        tokens = [self.owner_token, self.editor_token]
+        for token in tokens:
+            for method, path in probes:
+                with self.subTest(token=token[:8], method=method, path=path):
+                    resp = self.client.request(method, path, headers=_auth(token))
+                    self.assertNotIn("password_hash", resp.text)
+
+    # ── (i) missing token and garbage token both 401 on an /admin route
+    def test_missing_and_garbage_token_return_401(self):
+        for headers in (None, _auth("not-a-real-token")):
+            with self.subTest(headers=headers):
+                resp = self.client.get("/admin/summary", headers=headers)
+                self.assertEqual(resp.status_code, 401, resp.text)
 
 
 if __name__ == "__main__":

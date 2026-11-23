@@ -3,7 +3,7 @@ API Information
 
 This file documents every API endpoint currently implemented in the backend
 (FastAPI + SQLModel). It is for reference only; it does not affect the code.
-Total number of implemented APIs: 31 (30 registered while CHAT_ENABLED is
+Total number of implemented APIs: 36 (35 registered while CHAT_ENABLED is
 false, which is the default)
 
 Authentication
@@ -14,9 +14,11 @@ as:
 
     Authorization: Bearer <access_token>
 
-Requests without a valid token return 401. The remaining public endpoints
-(health, catalog, fees, enrollment, trial requests, public blog, chat) do
-not require a token.
+Requests without a valid token return 401. Each /admin endpoint is
+restricted by role: most are owner-only; /admin/me and every /admin/blog
+endpoint also allow the seo_editor role (see each endpoint's "Auth" line).
+The remaining public endpoints (health, catalog, fees, enrollment, trial
+requests, public blog, chat) do not require a token.
 
 Protected-endpoint 401 bodies (all with header WWW-Authenticate: Bearer):
 {"detail": "Not authenticated"} (missing or non-Bearer Authorization header),
@@ -35,11 +37,13 @@ http://localhost:3000. Unhandled server errors return 500 {"detail":
 "Something went wrong. Please try again."} with the CORS headers still
 present; the real error is only logged.
 
-Rate limits (per client IP, in-memory per process, 429 with Retry-After):
-GET /courses/search 30/minute; POST /enrollments and POST /trial-requests
-10/hour each (validation failures count too; POST /enrollments requests
-carrying a valid admin token are not counted); POST /auth/login 5 failed
-attempts per 15 minutes.
+Rate limits (429 with Retry-After):
+GET /courses/search 30/minute and POST /enrollments / POST /trial-requests
+10/hour each are per client IP, in-memory per process (validation failures
+count too; POST /enrollments requests carrying a valid admin token are not
+counted). POST /auth/login uses a database-backed lockout: 5 failed attempts
+for the same username, or 5 from the same IP, in the last 15 minutes (see
+endpoint 12).
 
 Environment flags affecting public endpoints: CHAT_ENABLED (default false;
 registers POST /chat when true) and TRUST_PROXY_HEADERS (default false; set
@@ -288,13 +292,19 @@ endpoints. Returns 401 {"detail": "Invalid credentials"} (generic on purpose) if
 credentials are invalid, 422 if a field is missing, and 503 if the server's
 ADMIN_PASSWORD or JWT_SECRET_KEY env var is not configured. There is no
 refresh token; log in again after expiry.
-Brute-force protection: at most 5 FAILED attempts per client IP per 15
-minutes; the next attempt returns 429 {"detail": "Too many login attempts.
-Please try again in N minutes."} with Retry-After (successful logins aren't
-counted and don't reset the window). Every attempt runs exactly one bcrypt
-verification (against a dummy hash when the username is wrong) and the
-username is compared in constant time, so response time doesn't reveal
-whether the username exists.
+Brute-force protection: at most 5 FAILED attempts for the same username
+(normalized lower-case), or 5 from the same IP, in the last 15 minutes —
+stored in the login_attempts table — returns 429 {"detail": "Too many login
+attempts. Please try again in N minutes."} with Retry-After. The lockout is
+checked BEFORE the password is verified (owner and DB-user logins alike), so
+a correct password is refused during a lockout too; a successful login
+clears that username's failure counter. Every attempt runs exactly one
+bcrypt verification (against a dummy hash when the username is wrong) and
+the username is compared in constant time, so response time doesn't reveal
+whether the username exists. Client IP is the first X-Forwarded-For entry
+(the Next.js server forwards the visitor IP; it can be spoofed if the
+backend is publicly reachable, so the per-username limit is the primary
+protection), falling back to the TCP peer address.
 Not protected itself.
 
 Used By:
@@ -314,7 +324,7 @@ Used By:
 Admin dashboard header / stats cards.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -333,7 +343,7 @@ Used By:
 Admin dashboard enrollments table, with status filtering.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -356,7 +366,7 @@ Admin dashboard to move an enrollment through its lifecycle (trial to
 active, cancel, mark alumni).
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -370,7 +380,7 @@ Used By:
 Admin dashboard to remove an enrollment.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -387,7 +397,7 @@ Used By:
 Admin dashboard students table.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -407,7 +417,7 @@ Used By:
 Admin dashboard to edit a student's contact details.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -424,7 +434,7 @@ Used By:
 Admin dashboard to remove a student record.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -439,7 +449,7 @@ Used By:
 Admin dashboard chat-logs list.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -454,7 +464,7 @@ Used By:
 Admin dashboard to read a visitor's chat transcript.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -469,7 +479,7 @@ Used By:
 Admin dashboard to remove a chat log.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -486,7 +496,7 @@ Used By:
 Admin dashboard analytics (popular courses).
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -504,7 +514,7 @@ Used By:
 Future admin blog manager list.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner or seo_editor.
 
 ---
 
@@ -520,7 +530,7 @@ Used By:
 Future admin blog editor (load a post for editing).
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner or seo_editor.
 
 ---
 
@@ -565,7 +575,7 @@ Used By:
 Future admin blog editor.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner or seo_editor.
 
 ---
 
@@ -586,7 +596,7 @@ Used By:
 Future admin blog editor (save, publish, unpublish).
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner or seo_editor.
 
 ---
 
@@ -600,7 +610,7 @@ Used By:
 Future admin blog manager.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner or seo_editor.
 
 ---
 
@@ -617,7 +627,7 @@ Used By:
 Admin /admin/trial-requests page and the dashboard trial counts.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -641,7 +651,7 @@ Admin trial-requests page: "Enroll this student" (after creating the
 enrollment), "Mark as enrolled" and "Cancel trial".
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
 
 ---
 
@@ -656,4 +666,84 @@ Used By:
 Admin trial-requests page.
 
 Auth:
-Requires a valid admin Bearer token.
+Role: owner only (seo_editor gets 403).
+
+
+32. Endpoint: GET /admin/me
+
+Purpose:
+Returns the authenticated admin's own identity: {"name", "email", "role"}.
+email is null for the env-based owner (which has no admin_users row).
+
+Used By:
+Admin panel (identity + role for conditional UI).
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+33. Endpoint: GET /admin/users
+
+Purpose:
+Lists every admin_users row (id, name, email, role, is_active, last_login_at,
+created_at), ordered by id. Never returns password_hash.
+
+Used By:
+Admin team-management page.
+
+Auth:
+Role: owner only (seo_editor gets 403).
+
+---
+
+34. Endpoint: POST /admin/users
+
+Purpose:
+Creates an admin user. Body: {"name", "email", "password"}. Always creates
+role "seo_editor" — the API can never create an owner, and any extra field
+(such as "role") is rejected with 422. Email is trimmed + lower-cased and
+must be unique (409 with a clear message otherwise); password must be at
+least 10 characters (422). Returns 201 with the created user (no
+password_hash).
+
+Used By:
+Admin team-management page (add an SEO editor).
+
+Auth:
+Role: owner only (seo_editor gets 403).
+
+---
+
+35. Endpoint: PATCH /admin/users/{user_id}
+
+Purpose:
+Partially updates an admin user. Body may contain name, is_active, or
+password (a reset: min 10 chars, re-hashed) — only supplied fields change.
+Returns 404 for an unknown id and 422 for an invalid field. The env-based
+owner has no admin_users row and cannot be modified here. There is no delete
+endpoint: deactivate with is_active=false instead.
+
+Used By:
+Admin team-management page (rename, deactivate, reset a password).
+
+Auth:
+Role: owner only (seo_editor gets 403).
+
+---
+
+36. Endpoint: GET /admin/audit-log
+
+Purpose:
+Lists the audit log newest first, paginated (limit/offset; limit 1-200),
+optionally filtered by actor_user_id or entity_type. Each row: id, created_at,
+actor_user_id (null = env owner), actor_name, actor_role, action, entity_type,
+entity_id, before, after, ip. before/after are JSON snapshots; no password or
+hash is ever stored (a password reset is recorded as {"password": "reset"}).
+
+Used By:
+Admin activity/audit page.
+
+Auth:
+Role: owner only (seo_editor gets 403).
+

@@ -7,13 +7,14 @@ is the one exception and lives on its own router so it can allow both roles.
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from ..auth import AdminPrincipal, require_roles
+from ..audit import snapshot, write_audit
+from ..auth import AdminPrincipal, get_current_admin, require_roles
 from ..db import get_session
 from ..models import Conversation, Course, CoursePlan, Enrollment, Message, Student
 from ..models.enrollment import EnrollmentStatus, STATUS_TRANSITIONS, can_transition
@@ -132,6 +133,8 @@ def list_enrollments(
 def update_enrollment_status(
     enrollment_id: int,
     payload: EnrollmentStatusUpdate,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> AdminEnrollmentRead:
     enrollment = _load_enrollment(session, enrollment_id)
@@ -158,8 +161,19 @@ def update_enrollment_status(
             ),
         )
 
+    before = snapshot(enrollment)
     enrollment.status = target.value
     session.add(enrollment)
+    write_audit(
+        session,
+        principal,
+        "enrollment.update_status",
+        "enrollment",
+        str(enrollment.id),
+        before,
+        snapshot(enrollment),
+        request,
+    )
     session.commit()
 
     updated = _load_enrollment(session, enrollment_id)
@@ -172,13 +186,26 @@ def update_enrollment_status(
 )
 def delete_enrollment(
     enrollment_id: int,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     enrollment = session.get(Enrollment, enrollment_id)
     if enrollment is None:
         raise HTTPException(status_code=404, detail="Enrollment not found")
 
+    before = snapshot(enrollment)
     session.delete(enrollment)
+    write_audit(
+        session,
+        principal,
+        "enrollment.delete",
+        "enrollment",
+        str(enrollment_id),
+        before,
+        None,
+        request,
+    )
     session.commit()
 
 
@@ -193,6 +220,8 @@ def list_students(
 def update_student(
     student_id: int,
     payload: StudentUpdate,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> Student:
     student = session.get(Student, student_id)
@@ -240,7 +269,18 @@ def update_student(
         if key in updates and updates[key] is not None:
             updates[key] = updates[key].strip() or None
 
+    before_snapshot = snapshot(student)
     student.sqlmodel_update(updates)
+    write_audit(
+        session,
+        principal,
+        "student.update",
+        "student",
+        str(student.id),
+        before_snapshot,
+        snapshot(student),
+        request,
+    )
     try:
         session.commit()
     except IntegrityError:
@@ -262,6 +302,8 @@ def update_student(
 )
 def delete_student(
     student_id: int,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     student = session.get(Student, student_id)
@@ -283,7 +325,18 @@ def delete_student(
             ),
         )
 
+    before = snapshot(student)
     session.delete(student)
+    write_audit(
+        session,
+        principal,
+        "student.delete",
+        "student",
+        str(student_id),
+        before,
+        None,
+        request,
+    )
     session.commit()
 
 
@@ -351,6 +404,8 @@ def list_conversation_messages(
 )
 def delete_conversation(
     conversation_id: int,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     conversation = session.get(Conversation, conversation_id)
@@ -360,6 +415,7 @@ def delete_conversation(
     # Delete messages first — messages.conversation_id references
     # conversations.id, so a conversation cannot be removed while its
     # messages still exist.
+    before = snapshot(conversation)
     messages = session.exec(
         select(Message).where(Message.conversation_id == conversation_id)
     ).all()
@@ -367,6 +423,16 @@ def delete_conversation(
         session.delete(message)
 
     session.delete(conversation)
+    write_audit(
+        session,
+        principal,
+        "conversation.delete",
+        "conversation",
+        str(conversation_id),
+        before,
+        None,
+        request,
+    )
     session.commit()
 
 

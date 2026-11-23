@@ -4,6 +4,7 @@ from .admin_user import (
     AdminRole,
     AdminUser,
 )
+from .audit_log import AuditLog
 from .blog_post import (
     DEFAULT_BLOG_POST_STATUS,
     VALID_BLOG_POST_STATUSES,
@@ -21,6 +22,7 @@ from .enrollment import (
     EnrollmentStatus,
     can_transition,
 )
+from .login_attempt import LoginAttempt
 from .message import Message
 from .student import Student
 from .trial_request import (
@@ -45,6 +47,7 @@ __all__ = [
     "VALID_TRIAL_REQUEST_STATUSES",
     "AdminRole",
     "AdminUser",
+    "AuditLog",
     "BlogPost",
     "BlogPostStatus",
     "Conversation",
@@ -52,6 +55,7 @@ __all__ = [
     "CoursePlan",
     "Enrollment",
     "EnrollmentStatus",
+    "LoginAttempt",
     "Message",
     "Student",
     "TrialRequest",

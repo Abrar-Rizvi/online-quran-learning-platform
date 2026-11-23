@@ -2,10 +2,11 @@
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlmodel import Session, select
 
-from ..auth import require_roles
+from ..audit import snapshot, write_audit
+from ..auth import AdminPrincipal, get_current_admin, require_roles
 from ..db import get_session
 from ..models import (
     TRIAL_REQUEST_TRANSITIONS,
@@ -75,6 +76,8 @@ def admin_list_trial_requests(
 def admin_update_trial_request_status(
     trial_request_id: int,
     payload: TrialRequestStatusUpdate,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> TrialRequest:
     trial_request = session.get(TrialRequest, trial_request_id)
@@ -100,8 +103,19 @@ def admin_update_trial_request_status(
             ),
         )
 
+    before = snapshot(trial_request)
     trial_request.status = target.value
     session.add(trial_request)
+    write_audit(
+        session,
+        principal,
+        "trial_request.update_status",
+        "trial_request",
+        str(trial_request.id),
+        before,
+        snapshot(trial_request),
+        request,
+    )
     session.commit()
     session.refresh(trial_request)
     return trial_request
@@ -110,10 +124,23 @@ def admin_update_trial_request_status(
 @admin_router.delete("/{trial_request_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_trial_request(
     trial_request_id: int,
+    request: Request,
+    principal: AdminPrincipal = Depends(get_current_admin),
     session: Session = Depends(get_session),
 ) -> None:
     trial_request = session.get(TrialRequest, trial_request_id)
     if trial_request is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
+    before = snapshot(trial_request)
     session.delete(trial_request)
+    write_audit(
+        session,
+        principal,
+        "trial_request.delete",
+        "trial_request",
+        str(trial_request_id),
+        before,
+        None,
+        request,
+    )
     session.commit()

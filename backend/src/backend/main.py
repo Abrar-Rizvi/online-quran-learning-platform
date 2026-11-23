@@ -12,6 +12,8 @@ from .routers import (
     admin_me_router,
     admin_trial_requests_router,
     admin_router,
+    admin_users_router,
+    audit_router,
     auth_router,
     blog_router,
     chat_router,
@@ -122,6 +124,8 @@ app.include_router(admin_router)
 app.include_router(admin_me_router)
 app.include_router(admin_blog_router)
 app.include_router(admin_trial_requests_router)
+app.include_router(admin_users_router)
+app.include_router(audit_router)
 
 
 @app.get("/health")
