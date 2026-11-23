@@ -1,5 +1,6 @@
 from .admin import me_router as admin_me_router
 from .admin import router as admin_router
+from .admin_courses import router as admin_courses_router
 from .admin_users import router as admin_users_router
 from .audit import router as audit_router
 from .auth import router as auth_router
@@ -16,6 +17,7 @@ from .trial_requests import router as trial_requests_router
 
 __all__ = [
     "admin_blog_router",
+    "admin_courses_router",
     "admin_me_router",
     "admin_redirects_router",
     "admin_router",

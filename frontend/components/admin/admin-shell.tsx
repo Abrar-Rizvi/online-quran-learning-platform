@@ -26,16 +26,17 @@ const itemBase = cn(
 const itemIdle = "text-[var(--green-200)] hover:bg-white/[0.06] hover:text-white";
 
 function AdminBrand({ role }: { role?: string }) {
+  const isEditor = role === SEO_EDITOR_ROLE;
   return (
     <div className="flex items-center gap-2">
       <Logo
         variant="light"
-        href="/admin"
-        ariaLabel="Adan Online Academy admin — Dashboard"
+        href={isEditor ? "/admin/courses" : "/admin"}
+        ariaLabel={isEditor ? "Adan Online Academy admin — Courses" : "Adan Online Academy admin — Dashboard"}
         className="min-h-11 shrink-0"
       />
       <span className="rounded-[var(--radius-full)] border border-[var(--gold-400)] px-2 py-0.5 text-[11px] font-medium text-[var(--gold-400)]">
-        {role === SEO_EDITOR_ROLE ? "Editor" : "Admin"}
+        {isEditor ? "Editor" : "Admin"}
       </span>
     </div>
   );
@@ -137,6 +138,7 @@ export function AdminShell({
   const pathname = usePathname();
   const title = getAdminSectionTitle(pathname);
   const navItems = adminNavForRole(user?.role);
+  const isEditor = user?.role === SEO_EDITOR_ROLE;
 
   // The drawer remembers the path it was opened on, so any navigation closes it.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
@@ -210,8 +212,8 @@ export function AdminShell({
           <div className="shrink-0 lg:hidden">
             <Logo
               variant="light"
-              href="/admin"
-              ariaLabel="Adan Online Academy admin — Dashboard"
+              href={isEditor ? "/admin/courses" : "/admin"}
+              ariaLabel={isEditor ? "Adan Online Academy admin — Courses" : "Adan Online Academy admin — Dashboard"}
               className="min-h-11"
             />
           </div>

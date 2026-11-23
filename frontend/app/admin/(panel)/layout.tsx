@@ -8,7 +8,7 @@ import { formatAdminDate } from "@/lib/admin-format";
  * GET /admin/me on each full page load. A 401 makes adminFetch clear the
  * cookie and send the admin to the login page. Other failures (e.g. backend
  * down) don't block the shell — sections show their own errors, and the
- * sidebar falls back to the full (owner) nav.
+ * sidebar waits for a confirmed role.
  */
 export default async function AdminPanelLayout({ children }: LayoutProps<"/admin">) {
   const me = await getAdminMe();

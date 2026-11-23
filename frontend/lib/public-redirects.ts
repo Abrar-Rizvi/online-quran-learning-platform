@@ -41,14 +41,19 @@ function parseRedirects(body: unknown): Map<string, string> {
   return redirects;
 }
 
+async function fetchRedirects(): Promise<Map<string, string>> {
+  const response = await fetch(`${API_URL}/redirects`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    redirect: "error",
+  });
+  if (!response.ok) throw new Error("Redirect API unavailable");
+  return parseRedirects(await response.json());
+}
+
 async function refreshRedirects(): Promise<void> {
   try {
-    const response = await fetch(`${API_URL}/redirects`, {
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      redirect: "error",
-    });
-    if (!response.ok) throw new Error("Redirect API unavailable");
-    cached = parseRedirects(await response.json());
+    cached = await fetchRedirects();
     expiresAt = Date.now() + REFRESH_MS;
   } catch {
     // Fail open and coalesce retries during a backend outage.
@@ -57,7 +62,7 @@ async function refreshRedirects(): Promise<void> {
   }
 }
 
-export async function getPublicRedirect(pathname: string): Promise<string | undefined> {
+export async function getPublicRedirect(pathname: string, fresh = false): Promise<string | undefined> {
   const source = pathKey(pathname);
   if (
     !source ||
@@ -65,13 +70,15 @@ export async function getPublicRedirect(pathname: string): Promise<string | unde
     /^\/(?:images|opengraph-image)(?:\/|$)/.test(source) ||
     /\.[^/]+$/.test(source)
   ) return;
-  if (Date.now() >= expiresAt) {
+  if (!fresh && Date.now() >= expiresAt) {
     pending ??= refreshRedirects().finally(() => { pending = undefined; });
     await pending;
   }
 
-  const target = cached.get(source);
+  // Slug edits take effect as soon as the backend commits the course and its redirect.
+  const redirects = fresh ? await fetchRedirects().catch(() => cached) : cached;
+  const target = redirects.get(source);
   // The API flattens chains. Ignore any unsafe entries if the list violates that invariant.
   const targetKey = target && pathKey(target);
-  if (targetKey && !cached.has(targetKey)) return target;
+  if (targetKey && !redirects.has(targetKey)) return target;
 }

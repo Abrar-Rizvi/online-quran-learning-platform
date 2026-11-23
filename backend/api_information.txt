@@ -3,7 +3,7 @@ API Information
 
 This file documents every API endpoint currently implemented in the backend
 (FastAPI + SQLModel). It is for reference only; it does not affect the code.
-Total number of implemented APIs: 40 (39 registered while CHAT_ENABLED is
+Total number of implemented APIs: 43 (42 registered while CHAT_ENABLED is
 false, which is the default)
 
 Authentication
@@ -15,8 +15,8 @@ as:
     Authorization: Bearer <access_token>
 
 Requests without a valid token return 401. Each /admin endpoint is
-restricted by role: most are owner-only; /admin/me, /admin/blog and
-/admin/redirects also allow the seo_editor role (see each endpoint's "Auth" line).
+restricted by role: most are owner-only; /admin/me, /admin/blog,
+/admin/redirects and /admin/courses also allow the seo_editor role.
 The remaining public endpoints (health, catalog, fees, enrollment, trial
 requests, public blog, redirects, chat) do not require a token.
 
@@ -104,8 +104,10 @@ Next.js frontend course listing page (search box).
 4. Endpoint: GET /courses/{course_id}
 
 Purpose:
-Returns a single course's details (id, name, slug, description, category) together
-with all of its course plans (id, days_per_week, fee, currency). This lets
+Returns CourseDetail with id, name, slug, description, category, the nullable
+meta_title, meta_description and seo_content (Markdown), and all of its
+course plans (id, days_per_week, fee, currency). An empty or null SEO field
+means the frontend should use its code default. This lets
 the frontend show a specific course and the pricing/plan options available
 for it. Returns 404 if the course does not exist.
 
@@ -796,6 +798,49 @@ Role: owner or seo_editor.
 Purpose:
 Removes the redirect by ID and records the previous row in the audit log.
 Returns 204 on success or 404 if the ID does not exist.
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+41. Endpoint: GET /admin/courses
+
+Purpose:
+Lists courses by ID. Each row contains id, name, slug, category, meta_title,
+meta_description, and has_seo_content (boolean).
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+42. Endpoint: GET /admin/courses/{course_id}
+
+Purpose:
+Returns id, name, slug, category, description, meta_title, meta_description,
+and seo_content (Markdown). Returns 404 for an unknown course. The admin
+course responses omit plans, fees, and currency.
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+43. Endpoint: PATCH /admin/courses/{course_id}
+
+Purpose:
+Updates the supplied fields and returns the same shape as endpoint 42.
+Accepts name (nonblank, up to 255 characters), description (nullable), slug
+(up to 100 lowercase letters or digits with single hyphens between words),
+meta_title (255 characters), meta_description (500 characters), and
+seo_content (20,000 characters of Markdown). Empty strings and null clear
+SEO fields. Invalid values or unsupported fields return 422. An unknown ID
+returns 404 and a duplicate slug or name returns 409. Slug changes create a
+permanent 301 redirect from the previous URL. Name or description changes
+refresh the search embedding. If that fails, the update rolls back and
+returns 502. Each successful PATCH records a course.update audit entry
+with the before and after values of any changed fields.
 
 Auth:
 Role: owner or seo_editor.

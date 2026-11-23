@@ -1,7 +1,7 @@
 from typing import Any, Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import CheckConstraint, Column, Index
+from sqlalchemy import CheckConstraint, Column, Index, Text
 from sqlmodel import Field, Relationship, SQLModel
 
 from ..course_slugs import COURSE_SLUG_MAX_LENGTH, COURSE_SLUG_PATTERN
@@ -27,6 +27,9 @@ class Course(SQLModel, table=True):
     slug: str = Field(max_length=COURSE_SLUG_MAX_LENGTH, index=True, unique=True)
     description: Optional[str] = None
     category: Optional[str] = Field(default=None, index=True)
+    meta_title: Optional[str] = Field(default=None, max_length=255)
+    meta_description: Optional[str] = Field(default=None, max_length=500)
+    seo_content: Optional[str] = Field(default=None, sa_type=Text)
     embedding: Any = Field(default=None, sa_column=Column(Vector(EMBEDDING_DIM)))
 
     course_plans: list["CoursePlan"] = Relationship(back_populates="course")

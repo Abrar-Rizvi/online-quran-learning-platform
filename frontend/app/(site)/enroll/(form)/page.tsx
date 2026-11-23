@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Container, PageHeader, Reveal } from "@/components/ui";
 import { WhatsNextPanel } from "@/components/enroll/whats-next-panel";
 import { EnrollmentForm } from "@/components/enroll/enrollment-form";
-import { getPublicCourses, LEGACY_QAIDA_SLUG, NOORANI_QAIDA_SLUG } from "@/lib/courses";
+import { findCourseBySlug, findNooraniQaidaCourse, getPublicCourses, LEGACY_QAIDA_SLUG } from "@/lib/courses";
+import { getPublicRedirect } from "@/lib/public-redirects";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -13,13 +14,22 @@ export const metadata: Metadata = pageMetadata({
 });
 
 interface EnrollPageProps {
-  searchParams: Promise<{ course?: string }>;
+  searchParams: Promise<{ course?: string | string[] }>;
 }
 
 export default async function EnrollPage({ searchParams }: EnrollPageProps) {
   const { course } = await searchParams;
-  // Only public courses: a ?course= slug for a hidden course finds no match and is ignored.
-  const courses = await getPublicCourses(course === LEGACY_QAIDA_SLUG || course === NOORANI_QAIDA_SLUG);
+  const slug = typeof course === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(course)
+    ? course
+    : undefined;
+  const courses = await getPublicCourses(Boolean(slug));
+  let initialCourse = slug ? findCourseBySlug(courses, slug) : undefined;
+  if (!initialCourse && slug) {
+    const target = await getPublicRedirect(`/courses/${slug}`, true);
+    const targetSlug = target?.match(/^\/courses\/([a-z0-9]+(?:-[a-z0-9]+)*)$/)?.[1];
+    if (targetSlug) initialCourse = findCourseBySlug(courses, targetSlug);
+    if (!initialCourse && slug === LEGACY_QAIDA_SLUG) initialCourse = findNooraniQaidaCourse(courses);
+  }
 
   return (
     <>
@@ -36,7 +46,7 @@ export default async function EnrollPage({ searchParams }: EnrollPageProps) {
               <WhatsNextPanel />
             </Reveal>
             <Reveal delay={0.06}>
-              <EnrollmentForm courses={courses} initialCourseSlug={course} />
+              <EnrollmentForm courses={courses} initialCourseId={initialCourse?.id} />
             </Reveal>
           </div>
         </Container>

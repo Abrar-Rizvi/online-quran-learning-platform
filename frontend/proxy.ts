@@ -49,7 +49,8 @@ export async function proxy(request: NextRequest) {
 
   if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
 
-  const target = await getPublicRedirect(pathname);
+  const courseDetail = /^\/courses\/[^/]+\/?$/.test(pathname);
+  const target = await getPublicRedirect(pathname, courseDetail);
   if (!target) return NextResponse.next();
 
   const destination = new URL(request.url);

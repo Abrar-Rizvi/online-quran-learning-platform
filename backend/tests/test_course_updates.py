@@ -5,12 +5,14 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
-from backend.auth import AdminPrincipal
+from backend.auth import AdminPrincipal, create_access_token
 from backend.course_updates import update_course
 from backend.embeddings import EMBEDDING_DIM, EmbeddingUnavailable
-from backend.models import AuditLog, Course, Redirect
+from backend.main import app
+from backend.models import AdminUser, AuditLog, Course, Redirect
 from scripts import rename_noorani_qaida
 from tests.base import test_engine
 
@@ -112,7 +114,7 @@ class CourseUpdateTest(unittest.TestCase):
         self.assertEqual(list(course.embedding), ORIGINAL_VECTOR)
         self.assertIsNone(self.find_redirect(self.session))
 
-    def cleanup_script_fixture(self, course_id):
+    def cleanup_course_fixture(self, course_id):
         with Session(test_engine) as session:
             redirect = self.find_redirect(session)
             audits = session.exec(select(AuditLog).where(
@@ -129,11 +131,147 @@ class CourseUpdateTest(unittest.TestCase):
                 session.delete(course)
             session.commit()
 
+    def commit_course_fixture(self, course):
+        course_id = course.id
+        self.addCleanup(self.cleanup_course_fixture, course_id)
+        self.session.commit()
+        return course_id
+
+    def course_audits(self, session, course_id):
+        return session.exec(
+            select(AuditLog)
+            .where(AuditLog.entity_type == "course", AuditLog.entity_id == str(course_id))
+            .order_by(AuditLog.id)
+        ).all()
+
+    def remove_editor(self, editor_id):
+        with Session(test_engine) as session:
+            editor = session.get(AdminUser, editor_id)
+            if editor:
+                session.delete(editor)
+                session.commit()
+
+    def test_admin_course_seo_round_trip_and_audit_for_both_roles(self):
+        course = self.make_course()
+        course_name = course.name
+        course_slug = course.slug
+        editor = AdminUser(
+            name="Course SEO Editor", email=f"{self.prefix}@example.com",
+            password_hash="unused-by-token-auth", role="seo_editor",
+        )
+        self.session.add(editor)
+        self.session.flush()
+        editor_id = editor.id
+        self.addCleanup(self.remove_editor, editor_id)
+        editor_token = create_access_token(editor.email, role="seo_editor", user_id=editor_id)
+        course_id = self.commit_course_fixture(course)
+        path = f"/admin/courses/{course_id}"
+        seo_fields = {
+            "meta_title": "Course page title",
+            "meta_description": "Course page description",
+            "seo_content": "## Course overview",
+        }
+        empty_seo_fields = dict.fromkeys(seo_fields)
+        initial = {
+            "id": course_id, "name": course_name, "slug": course_slug, "category": None,
+            "description": "Original description", **empty_seo_fields,
+        }
+        summary = {
+            "id": course_id, "name": course_name, "slug": course_slug, "category": None,
+            "meta_title": None, "meta_description": None, "has_seo_content": False,
+        }
+        with TestClient(app) as client, patch("backend.course_updates.embed_one") as embed:
+            self.assertEqual(client.get(path).status_code, 401)
+            for role, token in (("owner", create_access_token(ACTOR.name)), ("seo_editor", editor_token)):
+                with self.subTest(role=role):
+                    headers = {"Authorization": f"Bearer {token}"}
+                    listing = client.get("/admin/courses", headers=headers)
+                    self.assertEqual(listing.status_code, 200, listing.text)
+                    self.assertIn(summary, listing.json())
+                    detail = client.get(path, headers=headers)
+                    self.assertEqual(detail.status_code, 200, detail.text)
+                    self.assertEqual(detail.json(), initial)
+
+            editor_headers = {"Authorization": f"Bearer {editor_token}"}
+            updated = client.patch(path, headers=editor_headers, json=seo_fields)
+            self.assertEqual(updated.status_code, 200, updated.text)
+            self.assertEqual(updated.json(), {**initial, **seo_fields})
+            listing = client.get("/admin/courses", headers=editor_headers)
+            self.assertEqual(listing.status_code, 200, listing.text)
+            self.assertIn({
+                **summary, "meta_title": seo_fields["meta_title"],
+                "meta_description": seo_fields["meta_description"], "has_seo_content": True,
+            }, listing.json())
+
+            owner_headers = {"Authorization": f"Bearer {create_access_token(ACTOR.name)}"}
+            cleared = client.patch(
+                path, headers=owner_headers, json={"meta_title": "", "seo_content": None},
+            )
+            self.assertEqual(cleared.status_code, 200, cleared.text)
+            self.assertEqual(cleared.json(), {**initial, "meta_description": seo_fields["meta_description"]})
+            embed.assert_not_called()
+
+        with Session(test_engine) as session:
+            self.assertEqual(list(session.get(Course, course_id).embedding), ORIGINAL_VECTOR)
+            editor_audit, owner_audit = self.course_audits(session, course_id)
+            self.assertEqual(editor_audit.action, "course.update")
+            self.assertEqual((editor_audit.actor_user_id, editor_audit.actor_role), (editor_id, "seo_editor"))
+            self.assertEqual(editor_audit.before, empty_seo_fields)
+            self.assertEqual(editor_audit.after, seo_fields)
+            self.assertEqual(owner_audit.action, "course.update")
+            self.assertEqual(owner_audit.actor_role, "owner")
+            self.assertEqual(owner_audit.before, {
+                "meta_title": seo_fields["meta_title"], "seo_content": seo_fields["seo_content"],
+            })
+            self.assertEqual(owner_audit.after, {"meta_title": None, "seo_content": None})
+
+    def test_admin_course_patch_rejects_invalid_fields(self):
+        course_id = self.commit_course_fixture(self.make_course())
+        headers = {"Authorization": f"Bearer {create_access_token(ACTOR.name)}"}
+        with TestClient(app) as client:
+            missing_path = "/admin/courses/0"
+            self.assertEqual(client.get(missing_path, headers=headers).status_code, 404)
+            self.assertEqual(client.patch(missing_path, json={}, headers=headers).status_code, 404)
+            for payload in (
+                {"meta_title": "x" * 256}, {"meta_description": "x" * 501},
+                {"seo_content": "x" * 20001}, {"course_plans": []}, {"fee": 10},
+                {"currency": "USD"},
+            ):
+                with self.subTest(field=next(iter(payload))):
+                    response = client.patch(f"/admin/courses/{course_id}", json=payload, headers=headers)
+                    self.assertEqual(response.status_code, 422, response.text)
+        with Session(test_engine) as session:
+            self.assertEqual(self.course_audits(session, course_id), [])
+
+    def test_admin_course_patch_returns_502_and_rolls_back_on_embedding_failure(self):
+        course = self.make_course()
+        original_name = course.name
+        original_slug = course.slug
+        course_id = self.commit_course_fixture(course)
+        headers = {"Authorization": f"Bearer {create_access_token(ACTOR.name)}"}
+        with TestClient(app) as client, patch(
+            "backend.course_updates.embed_one", side_effect=RuntimeError("Upstream failed"),
+        ) as embed:
+            response = client.patch(
+                f"/admin/courses/{course_id}", headers=headers,
+                json={"name": "Changed", "description": "Revised text",
+                      "slug": f"{self.prefix}-new", "meta_title": "New title"},
+            )
+            self.assertEqual(response.status_code, 502, response.text)
+            embed.assert_called_once_with("Revised text")
+
+        with Session(test_engine) as session:
+            saved = session.get(Course, course_id)
+            self.assertEqual((saved.name, saved.slug), (original_name, original_slug))
+            self.assertEqual(saved.description, "Original description")
+            self.assertIsNone(saved.meta_title)
+            self.assertEqual(list(saved.embedding), ORIGINAL_VECTOR)
+            self.assertIsNone(self.find_redirect(session))
+            self.assertEqual(self.course_audits(session, course_id), [])
+
     def test_script_dry_run_apply_and_idempotence(self):
         course = self.make_course(description="Learn Qaida For Beginner online.")
-        course_id = course.id
-        self.addCleanup(self.cleanup_script_fixture, course_id)
-        self.session.commit()
+        course_id = self.commit_course_fixture(course)
         new_slug = f"{self.prefix}-new"
         new_name = f"{self.prefix} new"
         with patch.multiple(

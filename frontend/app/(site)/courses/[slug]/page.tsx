@@ -4,7 +4,10 @@ import type { Metadata } from "next";
 import { Badge, Button, Container, PageHeader, Reveal } from "@/components/ui";
 import { CourseArt } from "@/components/courses/course-art";
 import { CheckIcon, PricingGrid } from "@/components/courses/pricing-card";
+import { ReadMore } from "@/components/courses/read-more";
+import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { fetchCourseDetail } from "@/lib/api";
+import { courseSearchSnippet, splitCourseContent } from "@/lib/course-seo";
 import {
   findCourseBySlug,
   getCourseArtTone,
@@ -14,7 +17,7 @@ import {
   LEGACY_QAIDA_SLUG,
   NOORANI_QAIDA_SLUG,
 } from "@/lib/courses";
-import { pageMetadata, trimDescription } from "@/lib/seo";
+import { pageMetadata } from "@/lib/seo";
 
 const WHATS_INCLUDED = [
   "One-to-one live classes",
@@ -44,10 +47,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const course = await resolveCourse(slug);
   if (!course) return {};
-  const description = course.description
-    ? trimDescription(course.description)
-    : `Live one-to-one online ${course.name} classes with Adan Online Academy.`;
+  const { customTitle, description } = courseSearchSnippet(course);
   const metadata = pageMetadata({ title: course.name, description, path: `/courses/${course.slug}` });
+  if (customTitle) {
+    metadata.title = { absolute: customTitle };
+    metadata.openGraph = { ...metadata.openGraph, title: customTitle };
+    metadata.twitter = { ...metadata.twitter, title: customTitle };
+  }
   const imageSrc = getCourseImage(course.slug);
   if (!imageSrc) return metadata;
   // The optimizer's 1200px version, not the raw file: some course photos exceed X's 5 MB card limit.
@@ -66,6 +72,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
   if (!course) notFound();
 
   const imageSrc = getCourseImage(course.slug);
+  const { lead, extra } = splitCourseContent(course.seo_content ?? "");
   const plans = course.course_plans.map((plan) => ({
     daysPerWeek: plan.days_per_week,
     fee: parseFloat(plan.fee),
@@ -195,6 +202,17 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
           </Reveal>
         </Container>
       </section>
+      {(lead || extra) && (
+        <section aria-labelledby="course-about" className="bg-[var(--bg)] py-16 lg:py-24">
+          <Container>
+            <div className="mx-auto max-w-3xl">
+              <h2 id="course-about" className="mb-6">About this course</h2>
+              {lead && <MarkdownContent>{lead}</MarkdownContent>}
+              {extra && <ReadMore><MarkdownContent>{extra}</MarkdownContent></ReadMore>}
+            </div>
+          </Container>
+        </section>
+      )}
     </>
   );
 }

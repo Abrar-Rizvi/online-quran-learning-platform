@@ -1,6 +1,6 @@
 """Integration tests for the SEO-expert-access (Part A) admin auth work.
 
-These run against the configured database (the dev database in normal use) and
+These run against the configured test database and
 the real env-based owner credentials from settings. They are self-cleaning:
 any admin_users row / blog post created here is removed in tearDown/tearDownClass.
 
@@ -31,6 +31,12 @@ EDITOR_REDIRECT_ROUTES = {
     ("POST", "/admin/redirects"),
     ("DELETE", "/admin/redirects/{redirect_id}"),
 }
+EDITOR_COURSE_ROUTES = {
+    ("GET", "/admin/courses"),
+    ("GET", "/admin/courses/{course_id}"),
+    ("PATCH", "/admin/courses/{course_id}"),
+}
+EDITOR_ROUTE_EXCEPTIONS = EDITOR_REDIRECT_ROUTES | EDITOR_COURSE_ROUTES
 
 
 def _auth(token: str) -> dict:
@@ -149,7 +155,7 @@ class AdminAccessTest(unittest.TestCase):
             for method in methods:
                 if method.lower() not in ("get", "post", "patch", "delete"):
                     continue
-                if (method.upper(), path) in EDITOR_REDIRECT_ROUTES:
+                if (method.upper(), path) in EDITOR_ROUTE_EXCEPTIONS:
                     continue
                 url = path.replace("{enrollment_id}", "1") \
                            .replace("{student_id}", "1") \
@@ -290,7 +296,7 @@ class AdminAccessTest(unittest.TestCase):
                 reachable_by_editor.add((method, path))
         self.assertEqual(
             reachable_by_editor,
-            EDITOR_REDIRECT_ROUTES,
+            EDITOR_ROUTE_EXCEPTIONS,
         )
 
     # ── (h) no response body leaks the password_hash column

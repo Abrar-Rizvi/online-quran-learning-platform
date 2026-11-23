@@ -60,6 +60,9 @@ class CourseSlugTest(unittest.TestCase):
             description="Test course",
             category="Test category",
             embedding=vector,
+            meta_title="Course page title",
+            meta_description="Course page description",
+            seo_content="## Course overview",
         )
         with Session(test_engine, expire_on_commit=False) as session:
             session.add(course)
@@ -87,7 +90,13 @@ class CourseSlugTest(unittest.TestCase):
 
             detail = client.get(f"/courses/{course.id}")
             self.assertEqual(detail.status_code, 200, detail.text)
-            self.assertEqual(detail.json(), {**item, "course_plans": []})
+            self.assertEqual(detail.json(), {
+                **item,
+                "course_plans": [],
+                "meta_title": course.meta_title,
+                "meta_description": course.meta_description,
+                "seo_content": course.seo_content,
+            })
 
             search = client.get("/courses/search", params={"q": course.name, "limit": 50})
             self.assertEqual(search.status_code, 200, search.text)

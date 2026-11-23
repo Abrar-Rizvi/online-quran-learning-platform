@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, FormField, TimePicker, inputClasses } from "@/components/ui";
 import { formatPrice } from "@/components/courses/pricing-card";
-import { findCourseBySlug, findNooraniQaidaCourse, LEGACY_QAIDA_SLUG } from "@/lib/courses";
 import {
   createEnrollment,
   fetchCourseDetail,
@@ -16,8 +15,8 @@ import { cn } from "@/lib/utils";
 
 interface EnrollmentFormProps {
   courses: CourseListItem[];
-  /** From ?course=<slug>, matched against the stored course slug. */
-  initialCourseSlug?: string;
+  /** Public course resolved from ?course=<slug> on the server. */
+  initialCourseId?: number;
 }
 
 interface FieldErrors {
@@ -42,14 +41,10 @@ const API_FIELDS: Record<string, keyof FieldErrors> = {
   course_plan_id: "plan",
 };
 
-export function EnrollmentForm({ courses, initialCourseSlug }: EnrollmentFormProps) {
+export function EnrollmentForm({ courses, initialCourseId }: EnrollmentFormProps) {
   const router = useRouter();
 
-  const initialCourse = initialCourseSlug === LEGACY_QAIDA_SLUG
-    ? findNooraniQaidaCourse(courses)
-    : initialCourseSlug ? findCourseBySlug(courses, initialCourseSlug) : undefined;
-
-  const [courseId, setCourseId] = useState<number | null>(initialCourse?.id ?? null);
+  const [courseId, setCourseId] = useState<number | null>(initialCourseId ?? null);
   const [planId, setPlanId] = useState<number | null>(null);
 
   const [plansData, setPlansData] = useState<CoursePlanItem[]>([]);

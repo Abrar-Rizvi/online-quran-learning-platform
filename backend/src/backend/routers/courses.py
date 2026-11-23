@@ -53,7 +53,9 @@ def search_courses(
 @router.get("/{course_id}", response_model=CourseDetail)
 def get_course(course_id: int, session: Session = Depends(get_session)) -> CourseDetail:
     row = session.exec(
-        select(*LIST_COLUMNS).where(Course.id == course_id)
+        select(
+            *LIST_COLUMNS, Course.meta_title, Course.meta_description, Course.seo_content,
+        ).where(Course.id == course_id)
     ).one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Course not found")

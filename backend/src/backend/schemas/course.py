@@ -35,3 +35,6 @@ class FeePlanRead(SQLModel):
 
 class CourseDetail(CourseRead):
     course_plans: list[CoursePlanRead] = []
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
+    seo_content: Optional[str] = None

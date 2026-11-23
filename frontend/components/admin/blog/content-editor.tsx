@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import dynamic from "next/dynamic";
 import { Button, inputClasses } from "@/components/ui";
 import { isAllowedLinkUrl } from "@/lib/blog-rules";
+import { READ_MORE_MARKER, splitCourseContent } from "@/lib/course-seo";
 import { cn } from "@/lib/utils";
 import {
   activeFormats,
@@ -198,7 +199,7 @@ function LinkPopover({
       )}
       <div className="mt-3 flex flex-wrap justify-end gap-2">
         <Button type="button" variant="secondary" size="md" className="h-11" onClick={onClose}>
-          Cancel
+          Keep editing
         </Button>
         <Button type="button" size="md" className="h-11" onClick={submit}>
           Insert link
@@ -221,6 +222,7 @@ export function ContentEditor({
   error,
   readOnly,
   describedBy,
+  courseContent = false,
 }: {
   id: string;
   value: string;
@@ -230,6 +232,7 @@ export function ContentEditor({
   error?: string;
   readOnly: boolean;
   describedBy?: string;
+  courseContent?: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -303,6 +306,16 @@ export function ContentEditor({
     applyEdit(ta, insertLink(ta.value, draft.selStart, draft.selEnd, url, text));
   }
 
+  function insertReadMore() {
+    const ta = textareaRef.current;
+    if (!ta || readOnly) return;
+    const start = ta.selectionStart;
+    const text = `\n\n${READ_MORE_MARKER}\n\n`;
+    const cursor = start + text.length;
+    applyEdit(ta, { start, end: start, text, selStart: cursor, selEnd: cursor });
+    onChange(ta.value);
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
     const key = e.key.toLowerCase();
@@ -316,7 +329,7 @@ export function ContentEditor({
   }
 
   // Toolbar: one Tab stop, arrow keys move between buttons (WAI-ARIA toolbar pattern).
-  const toolCount = TOOLS.length + 1;
+  const toolCount = TOOLS.length + (courseContent ? 2 : 1);
   function onToolbarKeyDown(e: React.KeyboardEvent) {
     const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity };
     if (!(e.key in moves)) return;
@@ -360,7 +373,7 @@ export function ContentEditor({
     <div>
       <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2">
         <label htmlFor={id} className="block text-sm font-medium text-[var(--text)]">
-          Content<span className="text-[var(--error)]"> *</span>
+          {courseContent ? "About this course content" : <>Content<span className="text-[var(--error)]"> *</span></>}
         </label>
         <div role="tablist" aria-label="Editor mode" className="flex gap-1">
           {tab("write", "Write")}
@@ -420,6 +433,19 @@ export function ContentEditor({
             >
               {LinkIcon}
             </button>
+            {courseContent && (
+              <button
+                type="button"
+                tabIndex={focusIndex === TOOLS.length + 1 ? 0 : -1}
+                disabled={readOnly}
+                onFocus={() => setFocusIndex(TOOLS.length + 1)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={insertReadMore}
+                className={cn(toolButton, "w-auto px-3 text-sm font-medium")}
+              >
+                Insert Read More
+              </button>
+            )}
           </div>
 
           {linkDraft && <LinkPopover draft={linkDraft} onInsert={onInsertLink} onClose={() => closeLink()} />}
@@ -433,11 +459,12 @@ export function ContentEditor({
             onFocus={refreshActive}
             readOnly={readOnly}
             dir="auto"
-            required
-            aria-required="true"
+            required={!courseContent}
             aria-invalid={error ? true : undefined}
             aria-describedby={describedBy}
-            placeholder={"Write your article here…\n\n## A section heading\n\nA paragraph with **bold** text and a [link](https://example.com)."}
+            placeholder={courseContent
+              ? "Describe what students will learn in this course…"
+              : "Write your article here…\n\n## A section heading\n\nA paragraph with **bold** text and a [link](https://example.com)."}
             className="block min-h-96 w-full resize-y rounded-b-[var(--radius-md)] bg-transparent px-4 py-3.5 text-[1.0625rem] leading-relaxed text-[var(--text)] [field-sizing:content] placeholder:text-[var(--text-muted)] outline-none"
           />
         </div>
@@ -459,7 +486,9 @@ export function ContentEditor({
               >
                 {title.trim() || <span className="text-[var(--text-muted)]">Untitled post</span>}
               </p>
-              {value.trim() ? (
+              {courseContent ? (
+                <CourseContentPreview value={value} />
+              ) : value.trim() ? (
                 <MarkdownContent>{value}</MarkdownContent>
               ) : (
                 <p className="text-[var(--text-muted)]">Nothing to preview yet. Switch to Write and add some content.</p>
@@ -478,5 +507,21 @@ export function ContentEditor({
         </p>
       </details>
     </div>
+  );
+}
+
+function CourseContentPreview({ value }: { value: string }) {
+  const { lead, extra } = splitCourseContent(value);
+  if (!lead && !extra) return <p className="text-[var(--text-muted)]">Nothing to preview yet.</p>;
+  return (
+    <>
+      {lead && <MarkdownContent>{lead}</MarkdownContent>}
+      {extra && (
+        <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <p className="mb-3 text-sm font-medium text-[var(--green-700)]">Shown after Read more</p>
+          <MarkdownContent>{extra}</MarkdownContent>
+        </div>
+      )}
+    </>
   );
 }

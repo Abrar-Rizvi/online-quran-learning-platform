@@ -4,6 +4,11 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /** Cache lifetime for course/fee data — short enough that a bad entry self-heals quickly. */
 const CATALOG_REVALIDATE_SECONDS = 300;
+export const COURSE_CATALOG_TAG = "course-catalog";
+
+export function courseDetailTag(id: number) {
+  return `course-detail-${id}`;
+}
 
 export interface CourseListItem {
   id: number;
@@ -30,6 +35,9 @@ export interface CoursePlanItem {
 
 export interface CourseDetailItem extends CourseListItem {
   course_plans: CoursePlanItem[];
+  meta_title: string | null;
+  meta_description: string | null;
+  seo_content: string | null;
 }
 
 export interface EnrollmentStudentItem {
@@ -61,7 +69,7 @@ export interface EnrollmentDetailItem {
 export async function fetchCourses(): Promise<CourseListItem[]> {
   try {
     const res = await fetch(`${BASE_URL}/courses`, {
-      next: { revalidate: CATALOG_REVALIDATE_SECONDS },
+      next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags: [COURSE_CATALOG_TAG] },
     });
     if (!res.ok) return [];
     return (await res.json()) as CourseListItem[];
@@ -100,7 +108,7 @@ export async function fetchFees(): Promise<FeePlanItem[]> {
 export async function fetchCoursesOrThrow(fresh = false): Promise<CourseListItem[]> {
   const res = await fetch(`${BASE_URL}/courses`, fresh
     ? { cache: "no-store" }
-    : { next: { revalidate: CATALOG_REVALIDATE_SECONDS } });
+    : { next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags: [COURSE_CATALOG_TAG] } });
   if (!res.ok) {
     throw new Error(`Failed to load courses (${res.status})`);
   }
@@ -132,7 +140,7 @@ export async function fetchCourseDetail(
 ): Promise<CourseDetailItem | null> {
   const res = await fetch(`${BASE_URL}/courses/${id}`, fresh
     ? { cache: "no-store" }
-    : { next: { revalidate: CATALOG_REVALIDATE_SECONDS } });
+    : { next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags: [courseDetailTag(id)] } });
   if (res.status === 404) return null;
   if (!res.ok) {
     throw new Error(`Failed to load course ${id} (${res.status})`);
