@@ -5,6 +5,8 @@
   "scripts": {
     "predev": "node scripts/generate-course-images.mjs",
     "dev": "next dev",
+    "predev:webpack": "node scripts/generate-course-images.mjs",
+    "dev:webpack": "next dev --webpack",
     "prebuild": "node scripts/generate-course-images.mjs",
     "build": "next build",
     "start": "next start",

@@ -4,8 +4,8 @@ import { CourseArt } from "./course-art";
 import { getCourseArtTone, getCourseImage } from "@/lib/courses";
 import type { CourseListItem } from "@/lib/api";
 
-function CourseImage({ course }: { course: CourseListItem }) {
-  const src = getCourseImage(course.slug);
+function CourseImage({ course, slug }: { course: CourseListItem; slug: string | null }) {
+  const src = slug ? getCourseImage(slug) : undefined;
 
   if (!src) {
     return (
@@ -31,9 +31,13 @@ function CourseImage({ course }: { course: CourseListItem }) {
 }
 
 export function CourseCard({ course }: { course: CourseListItem }) {
+  const slug = typeof course.slug === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(course.slug)
+    ? course.slug
+    : null;
+
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] transition-[translate,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
-      <CourseImage course={course} />
+      <CourseImage course={course} slug={slug} />
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <h3 className="text-lg font-bold" style={{ fontFamily: "var(--font-body)" }}>
@@ -48,21 +52,23 @@ export function CourseCard({ course }: { course: CourseListItem }) {
 
         <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
           <Button
-            href={`/enroll?course=${course.slug}`}
+            href={slug ? `/enroll?course=${slug}` : "/enroll"}
             variant="primary"
             size="sm"
             className="w-full sm:w-auto"
           >
             Enroll now
           </Button>
-          <Button
-            href={`/courses/${course.slug}`}
-            variant="secondary"
-            size="sm"
-            className="w-full sm:w-auto"
-          >
-            Course details
-          </Button>
+          {slug && (
+            <Button
+              href={`/courses/${slug}`}
+              variant="secondary"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              Course details
+            </Button>
+          )}
         </div>
       </div>
     </article>
