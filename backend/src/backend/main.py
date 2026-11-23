@@ -10,6 +10,7 @@ from .config import settings
 from .routers import (
     admin_blog_router,
     admin_me_router,
+    admin_redirects_router,
     admin_trial_requests_router,
     admin_router,
     admin_users_router,
@@ -20,6 +21,7 @@ from .routers import (
     courses_router,
     enrollments_router,
     fees_router,
+    redirects_router,
     trial_requests_router,
 )
 
@@ -112,6 +114,7 @@ app.include_router(fees_router)
 app.include_router(enrollments_router)
 app.include_router(trial_requests_router)
 app.include_router(blog_router)
+app.include_router(redirects_router)
 # The public chatbot endpoint stays off until it is hardened (timeouts, limits,
 # conversation ownership). Admin conversation endpoints are always available.
 if settings.chat_enabled:
@@ -126,6 +129,7 @@ app.include_router(admin_blog_router)
 app.include_router(admin_trial_requests_router)
 app.include_router(admin_users_router)
 app.include_router(audit_router)
+app.include_router(admin_redirects_router)
 
 
 @app.get("/health")

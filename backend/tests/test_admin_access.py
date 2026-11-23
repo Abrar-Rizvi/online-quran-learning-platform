@@ -26,6 +26,11 @@ from backend.security import hash_password
 from tests.base import reset_login_attempts, test_engine
 
 EDITOR_PASSWORD = "editor-test-password-123"
+EDITOR_REDIRECT_ROUTES = {
+    ("GET", "/admin/redirects"),
+    ("POST", "/admin/redirects"),
+    ("DELETE", "/admin/redirects/{redirect_id}"),
+}
 
 
 def _auth(token: str) -> dict:
@@ -132,7 +137,7 @@ class AdminAccessTest(unittest.TestCase):
                 session.commit()
         test_engine.dispose()
 
-    # ── (a) seo_editor gets 403 on every /admin route except blog + /admin/me
+    # ── (a) Owner-only admin routes stay forbidden to seo_editor.
     def test_seo_editor_forbidden_on_owner_routes(self):
         skip_prefixes = ("/admin/blog",)
         skip_paths = {"/admin/me"}
@@ -143,6 +148,8 @@ class AdminAccessTest(unittest.TestCase):
                 continue
             for method in methods:
                 if method.lower() not in ("get", "post", "patch", "delete"):
+                    continue
+                if (method.upper(), path) in EDITOR_REDIRECT_ROUTES:
                     continue
                 url = path.replace("{enrollment_id}", "1") \
                            .replace("{student_id}", "1") \
@@ -274,19 +281,16 @@ class AdminAccessTest(unittest.TestCase):
         self.assertEqual(body["role"], "owner")
         self.assertIsNone(body["email"])
 
-    # ── (g) route/role table: no non-blog /admin route is seo_editor-reachable
+    # ── (g) Only the explicit admin exceptions are seo_editor-reachable.
     def test_admin_route_role_table(self):
-        """Enumerate every /admin route + its enforced roles and flag any
-        non-blog, non-/admin/me route that an seo_editor could reach."""
-        reachable_by_editor = []
+        """Check the exact exception list beyond blog and /admin/me."""
+        reachable_by_editor = set()
         for method, path, roles in _admin_route_roles():
             if "seo_editor" in roles and not path.startswith("/admin/blog") and path != "/admin/me":
-                reachable_by_editor.append((method, path, roles))
+                reachable_by_editor.add((method, path))
         self.assertEqual(
             reachable_by_editor,
-            [],
-            "seo_editor can reach non-blog /admin routes: "
-            + repr(reachable_by_editor),
+            EDITOR_REDIRECT_ROUTES,
         )
 
     # ── (h) no response body leaks the password_hash column

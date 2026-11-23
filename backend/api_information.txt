@@ -3,7 +3,7 @@ API Information
 
 This file documents every API endpoint currently implemented in the backend
 (FastAPI + SQLModel). It is for reference only; it does not affect the code.
-Total number of implemented APIs: 36 (35 registered while CHAT_ENABLED is
+Total number of implemented APIs: 40 (39 registered while CHAT_ENABLED is
 false, which is the default)
 
 Authentication
@@ -15,10 +15,10 @@ as:
     Authorization: Bearer <access_token>
 
 Requests without a valid token return 401. Each /admin endpoint is
-restricted by role: most are owner-only; /admin/me and every /admin/blog
-endpoint also allow the seo_editor role (see each endpoint's "Auth" line).
+restricted by role: most are owner-only; /admin/me, /admin/blog and
+/admin/redirects also allow the seo_editor role (see each endpoint's "Auth" line).
 The remaining public endpoints (health, catalog, fees, enrollment, trial
-requests, public blog, chat) do not require a token.
+requests, public blog, redirects, chat) do not require a token.
 
 Protected-endpoint 401 bodies (all with header WWW-Authenticate: Bearer):
 {"detail": "Not authenticated"} (missing or non-Bearer Authorization header),
@@ -746,4 +746,57 @@ Admin activity/audit page.
 
 Auth:
 Role: owner only (seo_editor gets 403).
+
+---
+
+37. Endpoint: GET /redirects
+
+Purpose:
+Returns permanent redirect mappings as [{"from_path": "/old", "to_path":
+"/new"}]. The response contains only these two fields.
+
+Used By:
+Public Next.js redirect lookup.
+
+Auth:
+None.
+
+---
+
+38. Endpoint: GET /admin/redirects
+
+Purpose:
+Lists redirects newest first by ID. Each row contains id, from_path, to_path,
+created_at, and created_by (nullable).
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+39. Endpoint: POST /admin/redirects
+
+Purpose:
+Creates a redirect from {"from_path": "/old", "to_path": "/new"} and returns
+201 with the admin row. Paths are normalized to lowercase with no trailing
+slash except the root. Only internal paths without a query or fragment are
+accepted, up to 1024 characters after normalization. Paths starting with
+/admin or /api, self-redirects, and loops return 422. A duplicate normalized
+source returns 409. Chains are flattened to the
+final destination, including existing redirects affected by a new mapping.
+Creation and automatic retargets are recorded in the audit log.
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+40. Endpoint: DELETE /admin/redirects/{redirect_id}
+
+Purpose:
+Removes the redirect by ID and records the previous row in the audit log.
+Returns 204 on success or 404 if the ID does not exist.
+
+Auth:
+Role: owner or seo_editor.
 

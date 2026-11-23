@@ -6,13 +6,13 @@ import {
   ADMIN_TOKEN_COOKIE,
   isTokenObviouslyInvalid,
 } from "@/lib/admin-auth";
+import { getPublicRedirect } from "@/lib/public-redirects";
 
 /**
- * Fast first check for /admin only (see `matcher`) — public routes never run
- * this. It only looks at whether the cookie exists and isn't obviously
+ * The admin guard only checks whether the cookie exists and isn't obviously
  * expired; the backend's 401 (handled by lib/admin-api.ts) is the real check.
  */
-export function proxy(request: NextRequest) {
+function guardAdmin(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   if (pathname === ADMIN_LOGOUT_PATH) return NextResponse.next();
 
@@ -41,6 +41,25 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (pathname === ADMIN_HOME || pathname.startsWith(`${ADMIN_HOME}/`)) {
+    return guardAdmin(request);
+  }
+
+  if (request.method !== "GET" && request.method !== "HEAD") return NextResponse.next();
+
+  const target = await getPublicRedirect(pathname);
+  if (!target) return NextResponse.next();
+
+  const destination = new URL(request.url);
+  destination.pathname = target;
+  return NextResponse.redirect(destination, 301);
+}
+
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/((?!admin|api|_next|images(?:/|$)|opengraph-image(?:/|$)|.*\\.[^/]+$).*)",
+  ],
 };

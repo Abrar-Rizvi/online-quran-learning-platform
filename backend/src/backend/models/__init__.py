@@ -24,6 +24,7 @@ from .enrollment import (
 )
 from .login_attempt import LoginAttempt
 from .message import Message
+from .redirect import Redirect
 from .student import Student
 from .trial_request import (
     DEFAULT_TRIAL_REQUEST_STATUS,
@@ -57,6 +58,7 @@ __all__ = [
     "EnrollmentStatus",
     "LoginAttempt",
     "Message",
+    "Redirect",
     "Student",
     "TrialRequest",
     "TrialRequestStatus",
