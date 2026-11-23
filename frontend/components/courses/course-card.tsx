@@ -1,11 +1,11 @@
 import Image from "next/image";
 import { Button } from "@/components/ui";
 import { CourseArt } from "./course-art";
-import { getCourseImage, toSlug, getCourseArtTone } from "@/lib/courses";
+import { getCourseArtTone, getCourseImage } from "@/lib/courses";
 import type { CourseListItem } from "@/lib/api";
 
 function CourseImage({ course }: { course: CourseListItem }) {
-  const src = getCourseImage(course.name);
+  const src = getCourseImage(course.slug);
 
   if (!src) {
     return (
@@ -31,8 +31,6 @@ function CourseImage({ course }: { course: CourseListItem }) {
 }
 
 export function CourseCard({ course }: { course: CourseListItem }) {
-  const slug = toSlug(course.name);
-
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] transition-[translate,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
       <CourseImage course={course} />
@@ -50,7 +48,7 @@ export function CourseCard({ course }: { course: CourseListItem }) {
 
         <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
           <Button
-            href={`/enroll?course=${slug}`}
+            href={`/enroll?course=${course.slug}`}
             variant="primary"
             size="sm"
             className="w-full sm:w-auto"
@@ -58,7 +56,7 @@ export function CourseCard({ course }: { course: CourseListItem }) {
             Enroll now
           </Button>
           <Button
-            href={`/courses/${slug}`}
+            href={`/courses/${course.slug}`}
             variant="secondary"
             size="sm"
             className="w-full sm:w-auto"

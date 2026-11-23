@@ -1,6 +1,8 @@
+import { findNooraniQaidaCourse, getPublicCourses } from "@/lib/courses";
 import { NavbarClient } from "./navbar-client";
 
-/** The "Courses" dropdown is a static category menu, so the navbar needs no data fetching. */
-export function Navbar() {
-  return <NavbarClient />;
+export async function Navbar() {
+  const course = findNooraniQaidaCourse(await getPublicCourses().catch(() => []));
+  const qaidaLink = course && { label: course.name, href: `/courses/${course.slug}` };
+  return <NavbarClient qaidaLink={qaidaLink} />;
 }

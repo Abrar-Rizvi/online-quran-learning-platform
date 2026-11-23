@@ -11,6 +11,8 @@ import {
   getCourseImage,
   getPublicCourses,
   isPublicCourse,
+  LEGACY_QAIDA_SLUG,
+  NOORANI_QAIDA_SLUG,
 } from "@/lib/courses";
 import { pageMetadata, trimDescription } from "@/lib/seo";
 
@@ -27,11 +29,13 @@ interface CourseDetailPageProps {
 
 /** Hidden (short) courses resolve to null, exactly like an unknown slug: the page 404s and gets no metadata. */
 async function resolveCourse(slug: string) {
-  const courses = await getPublicCourses();
+  // The redirect cache can see the rename before the catalog cache refreshes.
+  const fresh = slug === NOORANI_QAIDA_SLUG || slug === LEGACY_QAIDA_SLUG;
+  const courses = await getPublicCourses(fresh);
   const match = findCourseBySlug(courses, slug);
   if (!match) return null;
-  const course = await fetchCourseDetail(match.id);
-  return course && isPublicCourse(course) ? course : null;
+  const course = await fetchCourseDetail(match.id, fresh);
+  return course?.slug === slug && isPublicCourse(course) ? course : null;
 }
 
 export async function generateMetadata({
@@ -43,8 +47,8 @@ export async function generateMetadata({
   const description = course.description
     ? trimDescription(course.description)
     : `Live one-to-one online ${course.name} classes with Adan Online Academy.`;
-  const metadata = pageMetadata({ title: course.name, description, path: `/courses/${slug}` });
-  const imageSrc = getCourseImage(course.name);
+  const metadata = pageMetadata({ title: course.name, description, path: `/courses/${course.slug}` });
+  const imageSrc = getCourseImage(course.slug);
   if (!imageSrc) return metadata;
   // The optimizer's 1200px version, not the raw file: some course photos exceed X's 5 MB card limit.
   const images = [{ url: `/_next/image?url=${encodeURIComponent(imageSrc)}&w=1200&q=75`, alt: `${course.name} course` }];
@@ -61,7 +65,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
 
   if (!course) notFound();
 
-  const imageSrc = getCourseImage(course.name);
+  const imageSrc = getCourseImage(course.slug);
   const plans = course.course_plans.map((plan) => ({
     daysPerWeek: plan.days_per_week,
     fee: parseFloat(plan.fee),
@@ -161,7 +165,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
             </Reveal>
 
             <div className="mt-10">
-              <PricingGrid plans={plans} courseSlug={slug} />
+              <PricingGrid plans={plans} courseSlug={course.slug} />
             </div>
           </Container>
         </section>
@@ -172,7 +176,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
           <Reveal>
             <div className="mx-auto flex max-w-xl flex-col gap-3 sm:flex-row sm:justify-center">
               <Button
-                href={`/enroll?course=${slug}`}
+                href={`/enroll?course=${course.slug}`}
                 variant="primary"
                 size="md"
                 className="w-full sm:w-auto"

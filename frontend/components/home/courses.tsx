@@ -2,17 +2,16 @@ import Link from "next/link";
 import { Container, Reveal } from "@/components/ui";
 import { CourseCard } from "@/components/courses/course-card";
 import type { CourseListItem } from "@/lib/api";
-import { getPublicCourses, normalize } from "@/lib/courses";
+import { findCourseBySlug, findNooraniQaidaCourse, getPublicCourses, NOORANI_QAIDA_SLUG } from "@/lib/courses";
 
 /**
  * Fixed set of courses to feature on the homepage, in display order.
- * Matched by name (case-insensitive, trimmed) against the live /courses API —
- * never hardcoded description/category, never "first N returned".
+ * Resolved by stored slug against the live course catalog.
  */
-const TARGET_COURSE_NAMES = [
-  "Qaida for Beginners",
-  "Quran Recitation",
-  "Quran Memorization",
+const TARGET_COURSE_SLUGS = [
+  NOORANI_QAIDA_SLUG,
+  "quran-recitation",
+  "quran-memorization",
 ] as const;
 
 function ArrowRightIcon({ className }: { className?: string }) {
@@ -37,8 +36,9 @@ export async function Courses() {
   // Empty on failure (as before): the section simply hides instead of breaking the homepage.
   const courses = await getPublicCourses().catch(() => []);
 
-  const matched = TARGET_COURSE_NAMES.map((name) =>
-    courses.find((c) => normalize(c.name) === normalize(name)),
+  const matched = TARGET_COURSE_SLUGS.map((slug) =>
+    // TODO: Remove the legacy Qaida lookup once the production rename is complete.
+    slug === NOORANI_QAIDA_SLUG ? findNooraniQaidaCourse(courses) : findCourseBySlug(courses, slug),
   ).filter((c): c is CourseListItem => Boolean(c));
 
   if (matched.length === 0) return null;

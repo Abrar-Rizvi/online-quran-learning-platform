@@ -1,38 +1,36 @@
 import { fetchCoursesOrThrow, type CourseListItem } from "@/lib/api";
 import { COURSE_IMAGE_FILES } from "@/lib/course-images.generated";
 
-/** Local image per course, keyed by normalized course name (API has no image field). */
-export const COURSE_IMAGES: Record<string, string> = {
-  "qaida for beginners": "/images/courses/qaida.jpg",
-  "quran recitation": "/images/courses/quran.jpg",
-  "quran memorization": "/images/courses/memorization.jpg",
-};
+export const NOORANI_QAIDA_SLUG = "noorani-qaida-course";
+export const LEGACY_QAIDA_SLUG = "qaida-for-beginners";
 
-export function normalize(name: string): string {
-  return name.trim().toLowerCase();
-}
+/** Local image overrides keyed by course slug (the API has no image field). */
+const COURSE_IMAGES: ReadonlyMap<string, string> = new Map([
+  [NOORANI_QAIDA_SLUG, "/images/courses/qaida.jpg"],
+  ["quran-recitation", "/images/courses/quran.jpg"],
+  ["quran-memorization", "/images/courses/memorization.jpg"],
+]);
 
-export function toSlug(name: string): string {
-  return normalize(name)
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-/** Finds the course whose slug matches, using the same toSlug() as every link that builds /courses/{slug}. */
 export function findCourseBySlug(
   courses: CourseListItem[],
   slug: string,
 ): CourseListItem | undefined {
-  return courses.find((course) => toSlug(course.name) === slug);
+  return courses.find((course) => course.slug === slug);
+}
+
+export function findNooraniQaidaCourse(courses: CourseListItem[]): CourseListItem | undefined {
+  return findCourseBySlug(courses, NOORANI_QAIDA_SLUG) ?? findCourseBySlug(courses, LEGACY_QAIDA_SLUG);
 }
 
 const COURSE_IMAGE_DIR = "/images/courses/";
 
-/** Image files keyed by toSlug(filename without extension); the first file (sorted) wins on a duplicate key. */
+/** Image files keyed by normalized basename; the first file (sorted) wins on a duplicate key. */
 const COURSE_IMAGES_BY_KEY: ReadonlyMap<string, string> = (() => {
   const byKey = new Map<string, string>();
   for (const file of COURSE_IMAGE_FILES) {
-    const key = toSlug(file.replace(/\.[^.]+$/, ""));
+    const key = file.replace(/\.[^.]+$/, "").trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
     // Filenames may contain spaces, "&", "'" etc.: encode so the URL is always valid.
     if (key && !byKey.has(key)) byKey.set(key, COURSE_IMAGE_DIR + encodeURIComponent(file));
   }
@@ -40,12 +38,12 @@ const COURSE_IMAGES_BY_KEY: ReadonlyMap<string, string> = (() => {
 })();
 
 /**
- * Card image for a course (API has no image field): the explicit COURSE_IMAGES override first,
- * else the file in public/images/courses/ whose name matches the course name under toSlug()
- * (e.g. "Basic Qaida" → basic-qaida.png). Undefined means no image (pattern-tile fallback).
+ * Look up the explicit override first, then a local image whose normalized
+ * basename matches the stored slug. Undefined uses the artwork fallback.
  */
-export function getCourseImage(courseName: string): string | undefined {
-  return COURSE_IMAGES[normalize(courseName)] ?? COURSE_IMAGES_BY_KEY.get(toSlug(courseName));
+export function getCourseImage(slug: string): string | undefined {
+  const imageSlug = slug === LEGACY_QAIDA_SLUG ? NOORANI_QAIDA_SLUG : slug;
+  return COURSE_IMAGES.get(imageSlug) ?? COURSE_IMAGES_BY_KEY.get(slug);
 }
 
 export type CourseArtTone = "green" | "gold";
@@ -103,8 +101,8 @@ export function isPublicCourse(course: Pick<CourseListItem, "category">): boolea
 }
 
 /** GET /courses without the courses hidden from the public site. Throws on failure, like fetchCoursesOrThrow. */
-export async function getPublicCourses(): Promise<CourseListItem[]> {
-  return (await fetchCoursesOrThrow()).filter(isPublicCourse);
+export async function getPublicCourses(fresh = false): Promise<CourseListItem[]> {
+  return (await fetchCoursesOrThrow(fresh)).filter(isPublicCourse);
 }
 
 /** Classes per month for a plan: a flat `days_per_week × 4` (the one formula used everywhere it's displayed). */

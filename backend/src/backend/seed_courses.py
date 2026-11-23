@@ -13,6 +13,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from sqlmodel import select
 
+from .course_slugs import LEGACY_QAIDA_SLUG, NOORANI_QAIDA_SLUG, slug_from_course_name
 from .db import engine
 from .embeddings import embed
 from .models import Course
@@ -32,6 +33,9 @@ def main() -> None:
 
     with Session(engine) as session:
         existing_names = set(session.scalars(select(Course.name)).all())
+        qaida_exists = session.exec(
+            select(Course.id).where(Course.slug.in_([LEGACY_QAIDA_SLUG, NOORANI_QAIDA_SLUG]))
+        ).first() is not None
 
         to_insert: list[dict] = []
         skipped = 0
@@ -40,9 +44,14 @@ def main() -> None:
             if name in existing_names:
                 skipped += 1
                 continue
+            slug = slug_from_course_name(name)
+            if slug == NOORANI_QAIDA_SLUG and qaida_exists:
+                skipped += 1
+                continue
             to_insert.append(
                 {
                     "name": name,
+                    "slug": slug,
                     "description": item.get("description"),
                     "category": item.get("category"),
                 }

@@ -65,7 +65,7 @@ DevOps / deployment monitoring, or anyone verifying the server is alive.
 2. Endpoint: GET /courses
 
 Purpose:
-Returns a list of all courses (id, name, description, category) from the
+Returns a list of all courses (id, name, slug, description, category) from the
 database. This powers the course listing page so visitors can see what
 courses are offered. Embeddings are not returned.
 
@@ -104,7 +104,7 @@ Next.js frontend course listing page (search box).
 4. Endpoint: GET /courses/{course_id}
 
 Purpose:
-Returns a single course's details (id, name, description, category) together
+Returns a single course's details (id, name, slug, description, category) together
 with all of its course plans (id, days_per_week, fee, currency). This lets
 the frontend show a specific course and the pricing/plan options available
 for it. Returns 404 if the course does not exist.

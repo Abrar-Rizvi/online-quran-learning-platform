@@ -4,10 +4,12 @@ import re
 from dataclasses import dataclass
 from urllib.parse import quote, unquote
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy import text
 from sqlmodel import Session, select
 
+from .audit import snapshot, write_audit
+from .auth import AdminPrincipal
 from .models import Redirect
 
 _INVALID_ESCAPE = re.compile(r"%(?![a-f0-9]{2})", re.IGNORECASE)
@@ -51,6 +53,25 @@ def normalize_redirect_path(value: str, field: str) -> str:
 class AddedRedirect:
     redirect: Redirect
     retargeted: list[tuple[Redirect, str]]
+
+
+def audit_redirect_addition(
+    session: Session,
+    actor: AdminPrincipal,
+    result: AddedRedirect,
+    request: Request | None = None,
+) -> None:
+    redirect = result.redirect
+    write_audit(
+        session, actor, "redirect.create", "redirect", str(redirect.id),
+        None, snapshot(redirect), request,
+    )
+    for row, previous_target in result.retargeted:
+        after = snapshot(row)
+        write_audit(
+            session, actor, "redirect.update", "redirect", str(row.id),
+            {**after, "to_path": previous_target}, after, request,
+        )
 
 
 def lock_redirects(session: Session) -> None:

@@ -8,6 +8,7 @@ const CATALOG_REVALIDATE_SECONDS = 300;
 export interface CourseListItem {
   id: number;
   name: string;
+  slug: string;
   description: string | null;
   category: string | null;
 }
@@ -96,10 +97,10 @@ export async function fetchFees(): Promise<FeePlanItem[]> {
  * For pages with their own loading/error boundaries (app/courses, app/courses/[slug]),
  * where a real error state is preferable to a silently-empty list.
  */
-export async function fetchCoursesOrThrow(): Promise<CourseListItem[]> {
-  const res = await fetch(`${BASE_URL}/courses`, {
-    next: { revalidate: CATALOG_REVALIDATE_SECONDS },
-  });
+export async function fetchCoursesOrThrow(fresh = false): Promise<CourseListItem[]> {
+  const res = await fetch(`${BASE_URL}/courses`, fresh
+    ? { cache: "no-store" }
+    : { next: { revalidate: CATALOG_REVALIDATE_SECONDS } });
   if (!res.ok) {
     throw new Error(`Failed to load courses (${res.status})`);
   }
@@ -127,10 +128,11 @@ export async function fetchFeesOrThrow(): Promise<FeePlanItem[]> {
  */
 export async function fetchCourseDetail(
   id: number,
+  fresh = false,
 ): Promise<CourseDetailItem | null> {
-  const res = await fetch(`${BASE_URL}/courses/${id}`, {
-    next: { revalidate: CATALOG_REVALIDATE_SECONDS },
-  });
+  const res = await fetch(`${BASE_URL}/courses/${id}`, fresh
+    ? { cache: "no-store" }
+    : { next: { revalidate: CATALOG_REVALIDATE_SECONDS } });
   if (res.status === 404) return null;
   if (!res.ok) {
     throw new Error(`Failed to load course ${id} (${res.status})`);

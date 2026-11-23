@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container, PageHeader, Reveal } from "@/components/ui";
 import { WhatsNextPanel } from "@/components/enroll/whats-next-panel";
 import { EnrollmentForm } from "@/components/enroll/enrollment-form";
-import { getPublicCourses } from "@/lib/courses";
+import { getPublicCourses, LEGACY_QAIDA_SLUG, NOORANI_QAIDA_SLUG } from "@/lib/courses";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -19,7 +19,7 @@ interface EnrollPageProps {
 export default async function EnrollPage({ searchParams }: EnrollPageProps) {
   const { course } = await searchParams;
   // Only public courses: a ?course= slug for a hidden course finds no match and is ignored.
-  const courses = await getPublicCourses();
+  const courses = await getPublicCourses(course === LEGACY_QAIDA_SLUG || course === NOORANI_QAIDA_SLUG);
 
   return (
     <>

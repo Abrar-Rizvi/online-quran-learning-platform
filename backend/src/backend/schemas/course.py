@@ -9,6 +9,7 @@ class CourseRead(SQLModel):
 
     id: int
     name: str
+    slug: str
     description: Optional[str] = None
     category: Optional[str] = None
 

@@ -11,7 +11,7 @@ from .embeddings import embed_query
 from .models import Course
 from .schemas import CourseRead
 
-LIST_COLUMNS = (Course.id, Course.name, Course.description, Course.category)
+LIST_COLUMNS = (Course.id, Course.name, Course.slug, Course.description, Course.category)
 
 
 def find_similar_courses(
@@ -30,4 +30,4 @@ def find_similar_courses(
         .order_by(Course.embedding.cosine_distance(vector))
         .limit(limit)
     ).all()
-    return [CourseRead(id=r[0], name=r[1], description=r[2], category=r[3]) for r in rows]
+    return [CourseRead.model_validate(row._mapping) for row in rows]

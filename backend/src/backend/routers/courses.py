@@ -19,7 +19,7 @@ search_limiter = SlidingWindowRateLimiter(max_requests=30, window_seconds=60)
 @router.get("", response_model=list[CourseRead])
 def list_courses(session: Session = Depends(get_session)) -> list[CourseRead]:
     rows = session.exec(select(*LIST_COLUMNS).order_by(Course.id)).all()
-    return [CourseRead(id=r[0], name=r[1], description=r[2], category=r[3]) for r in rows]
+    return [CourseRead.model_validate(row._mapping) for row in rows]
 
 
 @router.get(
@@ -62,10 +62,4 @@ def get_course(course_id: int, session: Session = Depends(get_session)) -> Cours
         select(CoursePlan).where(CoursePlan.course_id == course_id)
     ).all()
 
-    return CourseDetail(
-        id=row[0],
-        name=row[1],
-        description=row[2],
-        category=row[3],
-        course_plans=list(plans),
-    )
+    return CourseDetail.model_validate({**row._mapping, "course_plans": list(plans)})

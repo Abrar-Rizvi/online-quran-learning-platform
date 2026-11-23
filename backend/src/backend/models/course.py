@@ -1,9 +1,10 @@
 from typing import Any, Optional
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, Index
+from sqlalchemy import CheckConstraint, Column, Index
 from sqlmodel import Field, Relationship, SQLModel
 
+from ..course_slugs import COURSE_SLUG_MAX_LENGTH, COURSE_SLUG_PATTERN
 from ..embeddings import EMBEDDING_DIM
 
 
@@ -18,10 +19,12 @@ class Course(SQLModel, table=True):
             postgresql_using="hnsw",
             postgresql_ops={"embedding": "vector_cosine_ops"},
         ),
+        CheckConstraint(f"slug ~ '{COURSE_SLUG_PATTERN}'", name="ck_courses_slug_format"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)
+    slug: str = Field(max_length=COURSE_SLUG_MAX_LENGTH, index=True, unique=True)
     description: Optional[str] = None
     category: Optional[str] = Field(default=None, index=True)
     embedding: Any = Field(default=None, sa_column=Column(Vector(EMBEDDING_DIM)))

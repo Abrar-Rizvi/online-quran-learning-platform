@@ -5,7 +5,7 @@ from ..audit import snapshot, write_audit
 from ..auth import AdminPrincipal, get_current_admin, require_roles
 from ..db import get_session
 from ..models import Redirect
-from ..redirects import add_redirect, lock_redirects
+from ..redirects import add_redirect, audit_redirect_addition, lock_redirects
 from ..schemas.redirect import PublicRedirect, RedirectCreate, RedirectRead
 
 router = APIRouter(tags=["redirects"])
@@ -36,16 +36,7 @@ def create_redirect(
 ) -> Redirect:
     result = add_redirect(session, payload.from_path, payload.to_path, principal.name)
     redirect = result.redirect
-    write_audit(
-        session, principal, "redirect.create", "redirect", str(redirect.id),
-        None, snapshot(redirect), request,
-    )
-    for row, previous_target in result.retargeted:
-        after = snapshot(row)
-        write_audit(
-            session, principal, "redirect.update", "redirect", str(row.id),
-            {**after, "to_path": previous_target}, after, request,
-        )
+    audit_redirect_addition(session, principal, result, request)
     session.commit()
     session.refresh(redirect)
     return redirect
