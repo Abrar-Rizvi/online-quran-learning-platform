@@ -22,6 +22,7 @@ from .enrollment import (
     EnrollmentStatus,
     can_transition,
 )
+from .image_alt import ImageAlt
 from .login_attempt import LoginAttempt
 from .message import Message
 from .redirect import Redirect
@@ -56,6 +57,7 @@ __all__ = [
     "CoursePlan",
     "Enrollment",
     "EnrollmentStatus",
+    "ImageAlt",
     "LoginAttempt",
     "Message",
     "Redirect",

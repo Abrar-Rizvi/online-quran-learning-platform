@@ -1,5 +1,8 @@
 "use client";
 
+import { SiteImage } from "@/components/site-image";
+import { SITE_IMAGES } from "@/lib/site-images";
+
 import {
   motion,
   useMotionValue,
@@ -104,10 +107,9 @@ export default function HeroSection() {
         className="pointer-events-none absolute -inset-24"
         style={{ x: layer1X, y: layer1Y }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- plain decorative bg image */}
-        <img
-          src="/images/hero-student.jpg"
-          alt=""
+        <SiteImage
+          as="img"
+          {...SITE_IMAGES.heroStudent}
           className="absolute inset-0 h-full w-full select-none object-cover object-center"
           draggable={false}
           style={{ opacity: 0.22 }}

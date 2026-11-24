@@ -36,7 +36,13 @@ EDITOR_COURSE_ROUTES = {
     ("GET", "/admin/courses/{course_id}"),
     ("PATCH", "/admin/courses/{course_id}"),
 }
-EDITOR_ROUTE_EXCEPTIONS = EDITOR_REDIRECT_ROUTES | EDITOR_COURSE_ROUTES
+EDITOR_IMAGE_ALT_ROUTES = {
+    ("GET", "/admin/image-alts"),
+    ("POST", "/admin/image-alts"),
+    ("PUT", "/admin/image-alts/{image_alt_id}"),
+    ("DELETE", "/admin/image-alts/{image_alt_id}"),
+}
+EDITOR_ROUTE_EXCEPTIONS = EDITOR_REDIRECT_ROUTES | EDITOR_COURSE_ROUTES | EDITOR_IMAGE_ALT_ROUTES
 
 
 def _auth(token: str) -> dict:
@@ -153,7 +159,7 @@ class AdminAccessTest(unittest.TestCase):
             if path in skip_paths or path.startswith(skip_prefixes):
                 continue
             for method in methods:
-                if method.lower() not in ("get", "post", "patch", "delete"):
+                if method.lower() not in ("get", "post", "put", "patch", "delete"):
                     continue
                 if (method.upper(), path) in EDITOR_ROUTE_EXCEPTIONS:
                     continue

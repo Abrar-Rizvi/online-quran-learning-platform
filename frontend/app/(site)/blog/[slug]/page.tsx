@@ -9,6 +9,8 @@ import { ArticleCover } from "@/components/blog/post-cover";
 import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { Container, PageHeader, Reveal } from "@/components/ui";
 import { fetchBlogPost, fetchBlogPosts } from "@/lib/api";
+import { resolveImageAlt } from "@/lib/image-alts";
+import { getPublicImageAlts } from "@/lib/public-image-alts";
 import { countWords, readingMinutes } from "@/lib/blog-rules";
 import { formatSiteDate, parseApiDate, toIsoDate } from "@/lib/dates";
 // Same origin as metadataBase in app/layout.tsx (JSON-LD needs absolute URLs).
@@ -28,7 +30,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   }
   const post = res.data;
   const url = `/blog/${post.slug}`;
-  const images = post.cover_image_url ? [{ url: post.cover_image_url, alt: post.title }] : [SITE_OG_IMAGE];
+  const images = post.cover_image_url ? [{
+    url: post.cover_image_url,
+    alt: resolveImageAlt(post.cover_image_url, post.title, await getPublicImageAlts()),
+  }] : [SITE_OG_IMAGE];
   return {
     title: post.title,
     description: post.excerpt,

@@ -1,7 +1,8 @@
-import Image from "next/image";
+import { SiteImage } from "@/components/site-image";
 import { Button } from "@/components/ui";
 import { CourseArt } from "./course-art";
 import { getCourseArtTone, getCourseImage } from "@/lib/courses";
+import { courseImageAlt } from "@/lib/site-images";
 import type { CourseListItem } from "@/lib/api";
 
 function CourseImage({ course, slug }: { course: CourseListItem; slug: string | null }) {
@@ -19,9 +20,9 @@ function CourseImage({ course, slug }: { course: CourseListItem; slug: string | 
 
   return (
     <div className="relative aspect-[3/2] w-full">
-      <Image
+      <SiteImage
         src={src}
-        alt={`${course.name} course`}
+        alt={courseImageAlt(course.name)}
         fill
         sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
         className="object-cover object-center"

@@ -25,12 +25,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { label: "Conversations", href: "/admin/conversations", icon: ConversationsIcon },
   { label: "Courses", href: "/admin/courses", icon: EnrollmentsIcon },
   { label: "Blog", href: "/admin/blog", icon: BlogIcon },
+  { label: "Image alt text", href: "/admin/image-alts", icon: BlogIcon },
   { label: "Team", href: "/admin/team", icon: StudentsIcon },
   { label: "Activity", href: "/admin/activity", icon: ClockIcon },
 ];
 
 /** Sections an seo_editor may see (backend still enforces the real permission). */
-const SEO_EDITOR_HREFS = new Set(["/admin/courses", "/admin/blog"]);
+const SEO_EDITOR_HREFS = new Set(["/admin/courses", "/admin/blog", "/admin/image-alts"]);
 
 /** Show owner-only sections once the owner's role is confirmed. */
 export function adminNavForRole(role: string | null | undefined): AdminNavItem[] {

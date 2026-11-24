@@ -2,6 +2,8 @@ import type { Element, ElementContent } from "hast";
 import Link from "next/link";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { SiteImage } from "@/components/site-image";
+import { localImagePath } from "@/lib/image-alts";
 import { cn } from "@/lib/utils";
 
 /*
@@ -100,10 +102,8 @@ const components: Components = {
   },
 
   img: ({ src, alt }) => {
-    if (typeof src !== "string" || !EXTERNAL.test(src)) return null;
-    // A plain <img>: posts link images from any host, which next/image would need allow-listed.
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt ?? ""} loading="lazy" decoding="async" />;
+    if (typeof src !== "string" || !(EXTERNAL.test(src) || localImagePath(src))) return null;
+    return <SiteImage as="img" src={src} alt={alt ?? ""} loading="lazy" decoding="async" />;
   },
 
   // Wide tables scroll inside their own box; focusable so keyboard users can scroll it too.

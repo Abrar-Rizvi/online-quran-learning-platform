@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SiteImage } from "@/components/site-image";
 import { CourseArt } from "@/components/courses/course-art";
 import { getCourseArtTone } from "@/lib/courses";
 import { cn } from "@/lib/utils";
@@ -44,8 +45,8 @@ export function PostCover({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <SiteImage
+      as="img"
       ref={ref}
       src={src}
       alt=""
@@ -62,8 +63,8 @@ export function ArticleCover({ src, alt }: { src: string; alt: string }) {
   const { ref, failed, onError } = useImageFailed();
   if (failed) return null;
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
+    <SiteImage
+      as="img"
       ref={ref}
       src={src}
       alt={alt}

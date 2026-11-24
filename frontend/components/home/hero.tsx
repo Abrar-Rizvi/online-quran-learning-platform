@@ -1,4 +1,5 @@
-import Image from "next/image";
+import { SiteImage } from "@/components/site-image";
+import { SITE_IMAGES } from "@/lib/site-images";
 import { Button, Container, IslamicPattern } from "@/components/ui";
 import { HeroFadeIn } from "./hero-entrance";
 
@@ -125,9 +126,8 @@ export function Hero() {
               className="relative overflow-hidden rounded-[var(--radius-lg)] border border-white/10"
               style={{ aspectRatio: "3/2" }}
             >
-              <Image
-                src="/images/hero-online.png"
-                alt="Laptop screen showing three children in an online Quran class — a boy reading the Quran on a bookstand, a girl using a tablet, and a boy practicing Arabic writing"
+              <SiteImage
+                {...SITE_IMAGES.hero}
                 fill
                 priority
                 sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"

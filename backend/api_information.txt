@@ -16,7 +16,7 @@ as:
 
 Requests without a valid token return 401. Each /admin endpoint is
 restricted by role: most are owner-only; /admin/me, /admin/blog,
-/admin/redirects and /admin/courses also allow the seo_editor role.
+/admin/redirects, /admin/courses and /admin/image-alts also allow the seo_editor role.
 The remaining public endpoints (health, catalog, fees, enrollment, trial
 requests, public blog, redirects, chat) do not require a token.
 
@@ -845,3 +845,66 @@ with the before and after values of any changed fields.
 Auth:
 Role: owner or seo_editor.
 
+---
+
+44. Endpoint: GET /image-alts
+
+Purpose:
+Returns a map keyed by canonical local image path, for example
+{"/images/about-one.png": {"alt_text": "Teacher on a video call",
+"is_decorative": false}}. An empty table returns {}. IDs, timestamps and
+audit information are omitted.
+
+Auth:
+None.
+
+---
+
+45. Endpoint: GET /admin/image-alts
+
+Purpose:
+Lists overrides in path order. Each row contains id, image_path, alt_text,
+is_decorative, created_at and updated_at.
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+46. Endpoint: POST /admin/image-alts
+
+Purpose:
+Creates an override and returns its full row (201). Accepts image_path,
+alt_text and is_decorative (default false). Paths must be local files under
+/images/ without a query or fragment. Filenames are normalized to canonical
+URL encoding. Alt text is trimmed and limited to 125 characters. Empty alt
+text is valid only for decorative images. Invalid input returns 422 and an
+existing path returns 409. Records image_alt.create in the audit log.
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+47. Endpoint: PUT /admin/image-alts/{image_alt_id}
+
+Purpose:
+Replaces the alt_text and is_decorative values, using the validation and
+defaults from endpoint 46. Keeps image_path fixed and returns the updated
+row, or 404 for an unknown ID. Records image_alt.update with the old and
+new values in the same transaction.
+
+Auth:
+Role: owner or seo_editor.
+
+---
+
+48. Endpoint: DELETE /admin/image-alts/{image_alt_id}
+
+Purpose:
+Removes an override so the site uses its code default. Returns 204 on
+success or 404 for an unknown ID. Records image_alt.delete with the old
+values in the same transaction.
+
+Auth:
+Role: owner or seo_editor.

@@ -10,6 +10,8 @@ from .chat import router as chat_router
 from .courses import router as courses_router
 from .enrollments import router as enrollments_router
 from .fees import router as fees_router
+from .image_alts import admin_router as admin_image_alts_router
+from .image_alts import router as image_alts_router
 from .redirects import admin_router as admin_redirects_router
 from .redirects import router as redirects_router
 from .trial_requests import admin_router as admin_trial_requests_router
@@ -18,6 +20,7 @@ from .trial_requests import router as trial_requests_router
 __all__ = [
     "admin_blog_router",
     "admin_courses_router",
+    "admin_image_alts_router",
     "admin_me_router",
     "admin_redirects_router",
     "admin_router",
@@ -30,6 +33,7 @@ __all__ = [
     "courses_router",
     "enrollments_router",
     "fees_router",
+    "image_alts_router",
     "redirects_router",
     "trial_requests_router",
 ]

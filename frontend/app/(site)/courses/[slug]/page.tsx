@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import { SiteImage } from "@/components/site-image";
 import type { Metadata } from "next";
 import { Badge, Button, Container, PageHeader, Reveal } from "@/components/ui";
 import { CourseArt } from "@/components/courses/course-art";
@@ -17,6 +17,9 @@ import {
   LEGACY_QAIDA_SLUG,
   NOORANI_QAIDA_SLUG,
 } from "@/lib/courses";
+import { courseImageAlt } from "@/lib/site-images";
+import { resolveImageAlt } from "@/lib/image-alts";
+import { getPublicImageAlts } from "@/lib/public-image-alts";
 import { pageMetadata } from "@/lib/seo";
 
 const WHATS_INCLUDED = [
@@ -57,7 +60,10 @@ export async function generateMetadata({
   const imageSrc = getCourseImage(course.slug);
   if (!imageSrc) return metadata;
   // The optimizer's 1200px version, not the raw file: some course photos exceed X's 5 MB card limit.
-  const images = [{ url: `/_next/image?url=${encodeURIComponent(imageSrc)}&w=1200&q=75`, alt: `${course.name} course` }];
+  const images = [{
+    url: `/_next/image?url=${encodeURIComponent(imageSrc)}&w=1200&q=75`,
+    alt: resolveImageAlt(imageSrc, courseImageAlt(course.name), await getPublicImageAlts()),
+  }];
   return {
     ...metadata,
     openGraph: { ...metadata.openGraph, images },
@@ -105,9 +111,9 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
                 style={{ aspectRatio: "3/2" }}
               >
                 {imageSrc ? (
-                  <Image
+                  <SiteImage
                     src={imageSrc}
-                    alt={`${course.name} course`}
+                    alt={courseImageAlt(course.name)}
                     fill
                     sizes="(min-width: 1024px) 45vw, 90vw"
                     preload

@@ -1,4 +1,5 @@
-import Image from "next/image";
+import { SiteImage } from "@/components/site-image";
+import { SITE_IMAGES } from "@/lib/site-images";
 import { Container, Reveal } from "@/components/ui";
 import { ImageReveal } from "./about-entrance";
 
@@ -24,14 +25,6 @@ const ABOUT = {
     "At Adan Online Academy, our mission is to make Quran learning accessible, flexible, and affordable for Muslim families everywhere. We aim to help students build a stronger connection with the Quran through personalized instruction, supportive teachers, and lessons designed around each student’s individual learning needs.",
     "We bring together authentic Islamic teachings and modern online learning, allowing students to receive quality Quran education from the comfort and privacy of their own homes—whether they live in the United States or anywhere else in the world. With one-to-one live lessons, every student receives focused guidance and the opportunity to learn at a comfortable pace.",
   ],
-  imageOne: {
-    src: "/images/about-one.png",
-    alt: "Teacher wearing a headset teaching Arabic letters to a young student through a live video call on a laptop",
-  },
-  imageTwo: {
-    src: "/images/about-two.png",
-    alt: "Father guiding his daughter through an online Quran lesson on a laptop, with Quran books on the desk",
-  },
 } as const;
 
 function highlightPhrases(text: string, phrases: string[]) {
@@ -86,9 +79,8 @@ export function About() {
               className="relative overflow-hidden rounded-[var(--radius-lg)]"
               style={{ aspectRatio: "3/2" }}
             >
-              <Image
-                src={ABOUT.imageOne.src}
-                alt={ABOUT.imageOne.alt}
+              <SiteImage
+                {...SITE_IMAGES.aboutOne}
                 fill
                 sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"
                 className="object-cover object-center"
@@ -167,9 +159,8 @@ export function About() {
               className="relative overflow-hidden rounded-[var(--radius-lg)]"
               style={{ aspectRatio: "3/2" }}
             >
-              <Image
-                src={ABOUT.imageTwo.src}
-                alt={ABOUT.imageTwo.alt}
+              <SiteImage
+                {...SITE_IMAGES.aboutTwo}
                 fill
                 sizes="(min-width: 1024px) 45vw, (min-width: 640px) 420px, 90vw"
                 className="object-cover object-center"

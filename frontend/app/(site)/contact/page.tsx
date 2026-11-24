@@ -1,9 +1,10 @@
-import Image from "next/image";
+import { SiteImage } from "@/components/site-image";
 import type { Metadata } from "next";
 import { Container, PageHeader, Reveal } from "@/components/ui";
 import { HeaderFeatureTiles } from "@/components/contact/header-feature-tiles";
 import { ContactInfo } from "@/components/contact/contact-info";
 import { TrialRequestForm } from "@/components/trial/trial-request-form";
+import { SITE_IMAGES } from "@/lib/site-images";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -39,9 +40,8 @@ export default function ContactPage() {
                   className="relative overflow-hidden rounded-[var(--radius-lg)]"
                   style={{ aspectRatio: "4/3" }}
                 >
-                  <Image
-                    src="/images/contact/contact-photo.png"
-                    alt="Smiling Quran teacher in a hijab at her desk, following an online class on her laptop, with Islamic books on the shelves behind her"
+                  <SiteImage
+                    {...SITE_IMAGES.contact}
                     fill
                     sizes="(min-width: 1400px) 644px, (min-width: 1024px) 46vw, 100vw"
                     className="object-cover object-center"

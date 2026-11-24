@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { ImageAltProvider } from "@/components/site-image";
+import { getPublicImageAlts } from "@/lib/public-image-alts";
 import HeroSection from "@/components/hero-section";
 
 export const metadata: Metadata = {
@@ -29,7 +31,7 @@ const PALETTE: Array<{
   { name: "Body Text", hex: "#334155", swatch: "bg-[#334155]" },
 ];
 
-export default function DesignTemplatePage() {
+export default async function DesignTemplatePage() {
   return (
     <main className="uk-edtech min-h-screen bg-[#F8FAFC] text-[#334155]">
       <div className="mx-auto max-w-6xl px-4 pt-10">
@@ -57,7 +59,9 @@ export default function DesignTemplatePage() {
       </div>
 
       <div className="mt-12">
-        <HeroSection />
+        <ImageAltProvider alts={await getPublicImageAlts()}>
+          <HeroSection />
+        </ImageAltProvider>
       </div>
     </main>
   );
