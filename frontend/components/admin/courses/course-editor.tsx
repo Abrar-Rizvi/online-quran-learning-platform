@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useId, useMemo, useState, type FormEvent } from "react";
 import { saveCourse } from "@/app/admin/(panel)/courses/actions";
 import { ContentEditor } from "@/components/admin/blog/content-editor";
 import { cardClasses, WidgetTitle } from "@/components/admin/dashboard/widget";
 import { ConfirmDialog } from "@/components/admin/ui/confirm-dialog";
 import { Button, FormField, inputClasses } from "@/components/ui";
 import { COURSE_FIELDS, type AdminCourseDetail, type CourseField, type CoursePatch } from "@/lib/admin-courses";
+import { getCourseMarkdown } from "@/lib/course-markdown";
 import { courseSearchSnippet } from "@/lib/course-seo";
 import { SITE_URL } from "@/lib/seo";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,9 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
   const id = useId();
   const slugChanged = values.slug !== saved.slug;
   const changedFields = COURSE_FIELDS.filter((key) => values[key] !== saved[key]);
-  const preview = courseSearchSnippet({ ...values, name: values.name.trim() || saved.name });
+  const courseName = values.name.trim() || saved.name;
+  const preview = courseSearchSnippet({ ...values, name: courseName });
+  const courseContent = useMemo(() => getCourseMarkdown(values.seo_content), [values.seo_content]);
 
   function change(field: CourseField, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -167,15 +170,29 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
         <section className={cn(cardClasses, "grid min-w-0 gap-3")}>
           <ContentEditor
             id={`${id}-seo_content`}
-            title="About this course"
+            title={courseName}
             value={values.seo_content}
             onChange={(value) => change("seo_content", value)}
             error={errors.seo_content}
             readOnly={saving}
             describedBy={`${id}-content-feedback`}
-            courseContent
+            courseContent={courseContent}
           />
           <div id={`${id}-content-feedback`} className="text-sm">
+            <div role="status" className="mb-2 space-y-1 wrap-anywhere">
+              <p className="font-medium text-[var(--text)]">
+                This page&apos;s H1: <bdi>{courseContent.heading?.text ?? courseName}</bdi>
+              </p>
+              {courseContent.headingCount > 1 && (
+                <p className="text-[var(--text-muted)]">Only the first heading is the H1; the others will become H2.</p>
+              )}
+              {courseContent.heading?.extraOffset !== undefined && (
+                <p className="text-[var(--warning)]">
+                  This H1 is in the hidden part (after Read more). It is still in the page HTML for search engines, but consider placing it before the Read more marker.
+                </p>
+              )}
+            </div>
+            <p className="text-[var(--text-muted)]">Use <code>#</code> once for the page H1 and <code>##</code> for section headings.</p>
             <p className="text-[var(--text-muted)]">Use Insert Read More where the public page should start collapsing the content.</p>
             {errors.seo_content && <p className="mt-1 text-[var(--error)]" role="alert">{errors.seo_content}</p>}
           </div>

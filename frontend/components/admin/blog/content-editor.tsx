@@ -4,10 +4,13 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import dynamic from "next/dynamic";
 import { Button, inputClasses } from "@/components/ui";
 import { isAllowedLinkUrl } from "@/lib/blog-rules";
-import { READ_MORE_MARKER, splitCourseContent } from "@/lib/course-seo";
+import type { CourseMarkdown } from "@/lib/course-markdown";
+import { READ_MORE_MARKER } from "@/lib/course-seo";
 import { cn } from "@/lib/utils";
+import { InternalLinkDialog } from "./internal-link-dialog";
 import {
   activeFormats,
+  insertInternalLink,
   insertLink,
   toggleInline,
   toggleLine,
@@ -17,7 +20,7 @@ import {
 
 const MIN_HEIGHT = 384; // 24rem
 
-// The Markdown parser (~50 KB gzipped) only loads when Preview is first opened.
+// The blog editor loads the Markdown renderer when Preview is first opened.
 const MarkdownContent = dynamic(() => import("@/components/markdown/markdown-content").then((m) => m.MarkdownContent), {
   loading: () => <p className="text-[var(--text-muted)]">Loading preview…</p>,
 });
@@ -90,6 +93,12 @@ const LinkIcon = (
   <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
     <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+  </svg>
+);
+
+const InternalLinkIcon = (
+  <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 10.5 12 4l8 6.5M6.5 9v10h11V9M10 13h4m-2-2v4" />
   </svg>
 );
 
@@ -222,7 +231,7 @@ export function ContentEditor({
   error,
   readOnly,
   describedBy,
-  courseContent = false,
+  courseContent,
 }: {
   id: string;
   value: string;
@@ -232,15 +241,17 @@ export function ContentEditor({
   error?: string;
   readOnly: boolean;
   describedBy?: string;
-  courseContent?: boolean;
+  courseContent?: CourseMarkdown;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<"write" | "preview">("write");
   const [active, setActive] = useState<Set<Format>>(new Set());
   const [linkDraft, setLinkDraft] = useState<LinkDraft | null>(null);
+  const [internalDraft, setInternalDraft] = useState<{ start: number; end: number; text: string } | null>(null);
   const [focusIndex, setFocusIndex] = useState(0);
   const tabIds = { write: useId(), preview: useId(), writePanel: useId(), previewPanel: useId() };
+  const PreviewTitle = courseContent && !courseContent.heading ? "h1" : "p";
 
   // A new validation error on the content switches back to Write, so the field can be focused and fixed.
   const [shownError, setShownError] = useState(error);
@@ -306,6 +317,28 @@ export function ContentEditor({
     applyEdit(ta, insertLink(ta.value, draft.selStart, draft.selEnd, url, text));
   }
 
+  function openInternalLink() {
+    const ta = textareaRef.current;
+    if (!ta || readOnly) return;
+    const { selectionStart: start, selectionEnd: end } = ta;
+    const text = ta.value.slice(start, end).trim().replace(/\s*\n\s*/g, " ");
+    setLinkDraft(null);
+    setInternalDraft({ start, end, text });
+  }
+
+  function finishInternalLink(path?: string, text = "", nofollow = false) {
+    const ta = textareaRef.current;
+    setInternalDraft(null);
+    if (!ta || !internalDraft) return;
+    if (path && !readOnly) {
+      applyEdit(ta, insertInternalLink(internalDraft.start, internalDraft.end, path, text, nofollow));
+      onChange(ta.value);
+    } else {
+      ta.focus();
+      ta.setSelectionRange(internalDraft.start, internalDraft.end);
+    }
+  }
+
   function insertReadMore() {
     const ta = textareaRef.current;
     if (!ta || readOnly) return;
@@ -329,7 +362,7 @@ export function ContentEditor({
   }
 
   // Toolbar: one Tab stop, arrow keys move between buttons (WAI-ARIA toolbar pattern).
-  const toolCount = TOOLS.length + (courseContent ? 2 : 1);
+  const toolCount = TOOLS.length + (courseContent ? 3 : 2);
   function onToolbarKeyDown(e: React.KeyboardEvent) {
     const moves: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity };
     if (!(e.key in moves)) return;
@@ -433,12 +466,27 @@ export function ContentEditor({
             >
               {LinkIcon}
             </button>
+            <button
+              type="button"
+              tabIndex={focusIndex === TOOLS.length + 1 ? 0 : -1}
+              aria-label="Insert internal link"
+              aria-haspopup="dialog"
+              aria-expanded={internalDraft !== null}
+              title="Insert internal link"
+              disabled={readOnly}
+              onFocus={() => setFocusIndex(TOOLS.length + 1)}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={openInternalLink}
+              className={toolButton}
+            >
+              {InternalLinkIcon}
+            </button>
             {courseContent && (
               <button
                 type="button"
-                tabIndex={focusIndex === TOOLS.length + 1 ? 0 : -1}
+                tabIndex={focusIndex === TOOLS.length + 2 ? 0 : -1}
                 disabled={readOnly}
-                onFocus={() => setFocusIndex(TOOLS.length + 1)}
+                onFocus={() => setFocusIndex(TOOLS.length + 2)}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={insertReadMore}
                 className={cn(toolButton, "w-auto px-3 text-sm font-medium")}
@@ -479,15 +527,15 @@ export function ContentEditor({
         >
           {mode === "preview" && (
             <>
-              <p
+              <PreviewTitle
                 dir="auto"
                 className="mb-6 max-w-[65ch] text-[var(--green-900)]"
                 style={{ fontFamily: "var(--font-heading)", fontSize: "clamp(1.75rem, 3vw, 2.25rem)", fontWeight: 700, lineHeight: 1.25 }}
               >
                 {title.trim() || <span className="text-[var(--text-muted)]">Untitled post</span>}
-              </p>
+              </PreviewTitle>
               {courseContent ? (
-                <CourseContentPreview value={value} />
+                <CourseContentPreview content={courseContent} />
               ) : value.trim() ? (
                 <MarkdownContent>{value}</MarkdownContent>
               ) : (
@@ -506,20 +554,23 @@ export function ContentEditor({
           ## Heading · ### Smaller heading · **bold** · _italic_ · - list · 1. numbered list · &gt; quote · [text](https://link)
         </p>
       </details>
+      {internalDraft && (
+        <InternalLinkDialog selectedText={internalDraft.text} onInsert={finishInternalLink} onDismiss={() => finishInternalLink()} />
+      )}
     </div>
   );
 }
 
-function CourseContentPreview({ value }: { value: string }) {
-  const { lead, extra } = splitCourseContent(value);
+function CourseContentPreview({ content }: { content: CourseMarkdown }) {
+  const { lead, extra, heading } = content;
   if (!lead && !extra) return <p className="text-[var(--text-muted)]">Nothing to preview yet.</p>;
   return (
     <>
-      {lead && <MarkdownContent>{lead}</MarkdownContent>}
+      {lead && <MarkdownContent h1Offset={heading?.leadOffset}>{lead}</MarkdownContent>}
       {extra && (
         <div className="mt-4 border-t border-[var(--border)] pt-4">
           <p className="mb-3 text-sm font-medium text-[var(--green-700)]">Shown after Read more</p>
-          <MarkdownContent>{extra}</MarkdownContent>
+          <MarkdownContent h1Offset={heading?.extraOffset}>{extra}</MarkdownContent>
         </div>
       )}
     </>

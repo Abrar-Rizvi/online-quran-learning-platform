@@ -465,3 +465,13 @@
 - Which page are the Sheet6 keywords for (homepage?)
 - Does the expert also want sitemap, canonical tags, Open Graph, schema?
 - Should seo_editor ever see fees? (currently no)]
+
+## 2026-11-25 — Course page H1 is chosen by the content (supersedes the "H1 inside content is rendered as H2" rule in 2026-11-22 for COURSES only)
+- Rule: every course page has exactly ONE H1. The SEO editor decides which.
+  - If the course's seo_content contains a heading written with a single `#`, the FIRST such heading becomes the page's H1. The course name in the hero is then rendered as normal (non-heading) text with the same visual styling.
+  - If seo_content has no `#` heading, the course name remains the H1 (current behavior, nothing changes).
+  - If seo_content has more than one `#` heading, only the first is H1; the others render as H2.
+- Visitors see no visual change; only the HTML tag differs (SEO and screen readers).
+- Scope: course detail pages only. Blog posts and any future `pages` keep their current H1 behavior (a `#` inside their content is rendered as H2) until decided separately.
+- Admin editor shows a small indicator: "This page's H1: <course name>" or "This page's H1: <content heading text>", plus a note when more than one `#` exists ("Only the first heading is H1; the others become H2"), and a warning (not a block) when the H1 sits after the [[read-more]] marker (hidden part).
+- Course name stays unchanged everywhere else (breadcrumb, cards, navbar, chatbot, metadata). No data model or migration change.

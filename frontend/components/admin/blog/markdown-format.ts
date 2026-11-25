@@ -108,6 +108,14 @@ export function insertLink(value: string, selStart: number, selEnd: number, url:
   return { start: selStart, end: selEnd, text: md, selStart: caret, selEnd: caret };
 }
 
+/** The picker supplies the final label, including any edits to the selected text. */
+export function insertInternalLink(start: number, end: number, path: string, text: string, nofollow: boolean): TextEdit {
+  const label = text.trim().replace(/\s*\r?\n\s*/g, " ").replace(/[\\[\]*_`~<>&]/g, "\\$&");
+  const markdown = `[${label}](${path}${nofollow ? ' "nofollow"' : ""})`;
+  const caret = start + markdown.length;
+  return { start, end, text: markdown, selStart: caret, selEnd: caret };
+}
+
 /** Formats active at the selection, for the toolbar's aria-pressed state. */
 export function activeFormats(value: string, selStart: number, selEnd: number): Set<Format> {
   const active = new Set<Format>();

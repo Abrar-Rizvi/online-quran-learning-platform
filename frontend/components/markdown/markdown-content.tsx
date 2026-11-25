@@ -1,4 +1,4 @@
-import type { Element, ElementContent } from "hast";
+import type { Element, ElementContent, Root } from "hast";
 import Link from "next/link";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -76,8 +76,10 @@ const components: Components = {
     const props = omitNode(rest);
     const url = href ?? "";
     if (INTERNAL.test(url)) {
+      const { title, ...linkProps } = props;
+      const nofollow = title === "nofollow";
       return (
-        <Link href={url} {...props}>
+        <Link href={url} {...linkProps} title={nofollow ? undefined : title} rel={nofollow ? "nofollow" : undefined}>
           {children}
         </Link>
       );
@@ -116,10 +118,65 @@ const components: Components = {
 
 const remarkPlugins = [remarkGfm];
 
-export function MarkdownContent({ children, className }: { children: string; className?: string }) {
+function headingText(children: ElementContent[]): string {
+  return children.map((child) => {
+    if (child.type === "text") return child.value;
+    if (child.type !== "element") return "";
+    if (child.tagName === "br") return " ";
+    return headingText(child.children);
+  }).join("");
+}
+
+/** Read the same HTML tree the renderer uses, before its heading components run. */
+export function findMarkdownH1s(markdown: string) {
+  const headings: { text: string; start: number; end: number }[] = [];
+  function visit(tree: Root | Element) {
+    for (const node of tree.children) {
+      if (node.type !== "element") continue;
+      if (node.tagName === "h1") {
+        const start = node.position?.start.offset;
+        const end = node.position?.end.offset;
+        const text = headingText(node.children).replace(/\s+/g, " ").trim();
+        if (text && start !== undefined && end !== undefined) headings.push({ text, start, end });
+      } else {
+        visit(node);
+      }
+    }
+  }
+  Markdown({
+    children: markdown,
+    remarkPlugins,
+    rehypePlugins: [() => (tree: Root) => {
+      visit(tree);
+      // The caller only needs the headings, so skip building React elements.
+      return { type: "root", children: [] } satisfies Root;
+    }],
+  });
+  return headings;
+}
+
+export function MarkdownContent({
+  children,
+  className,
+  h1Offset,
+}: {
+  children: string;
+  className?: string;
+  /** The source offset of the one H1 allowed in this Markdown fragment. */
+  h1Offset?: number;
+}) {
+  const markdownComponents: Components = h1Offset === undefined ? components : {
+    ...components,
+    h1: ({ node, className, ...props }) => (
+      node?.position?.start.offset === h1Offset
+        ? <h1 dir="auto" className={blockClass(node, className)} {...props} />
+        : <h2 dir="auto" className={className} {...props} />
+    ),
+  };
+
   return (
     <div className={cn("md-prose", className)}>
-      <Markdown remarkPlugins={remarkPlugins} skipHtml components={components}>
+      <Markdown remarkPlugins={remarkPlugins} skipHtml components={markdownComponents}>
         {children}
       </Markdown>
     </div>

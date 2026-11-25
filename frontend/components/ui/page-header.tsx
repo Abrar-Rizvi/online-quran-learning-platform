@@ -12,6 +12,7 @@ export interface BreadcrumbItem {
 interface PageHeaderProps {
   breadcrumbs: BreadcrumbItem[];
   heading: string;
+  headingAs?: "h1" | "p";
   description: string;
   className?: string;
   /** Optional extra content rendered below the description (e.g. feature tiles). Omit for the plain band used by every other page. */
@@ -28,6 +29,7 @@ interface PageHeaderProps {
 export function PageHeader({
   breadcrumbs,
   heading,
+  headingAs: Heading = "h1",
   description,
   className,
   children,
@@ -81,8 +83,8 @@ export function PageHeader({
           </ol>
         )}
 
-        <h1
-          className="mt-3 max-w-[40ch]"
+        <Heading
+          className={cn("mt-3 max-w-[40ch]", Heading === "p" && "text-balance")}
           style={{
             fontFamily: "var(--font-heading)",
             color: "#fff",
@@ -92,7 +94,7 @@ export function PageHeader({
           }}
         >
           {heading}
-        </h1>
+        </Heading>
 
         <p className="mt-2 max-w-[65ch] text-[var(--green-100)]">{description}</p>
 

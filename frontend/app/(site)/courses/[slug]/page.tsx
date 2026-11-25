@@ -7,7 +7,8 @@ import { CheckIcon, PricingGrid } from "@/components/courses/pricing-card";
 import { ReadMore } from "@/components/courses/read-more";
 import { MarkdownContent } from "@/components/markdown/markdown-content";
 import { fetchCourseDetail } from "@/lib/api";
-import { courseSearchSnippet, splitCourseContent } from "@/lib/course-seo";
+import { getCourseMarkdown } from "@/lib/course-markdown";
+import { courseSearchSnippet } from "@/lib/course-seo";
 import {
   findCourseBySlug,
   getCourseArtTone,
@@ -28,6 +29,8 @@ const WHATS_INCLUDED = [
   "Monthly progress report",
   "Male or female teacher",
 ] as const;
+
+const HERO_REVEAL = "[@media(scripting:none)]:opacity-100! [@media(scripting:none)]:transform-none!";
 
 interface CourseDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -78,7 +81,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
   if (!course) notFound();
 
   const imageSrc = getCourseImage(course.slug);
-  const { lead, extra } = splitCourseContent(course.seo_content ?? "");
+  const { lead, extra, heading } = getCourseMarkdown(course.seo_content ?? "");
   const plans = course.course_plans.map((plan) => ({
     daysPerWeek: plan.days_per_week,
     fee: parseFloat(plan.fee),
@@ -94,6 +97,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
           { label: course.name },
         ]}
         heading={course.name}
+        headingAs={heading ? "p" : "h1"}
         description={
           course.category
             ? `Live one-to-one classes for ${course.category}.`
@@ -101,52 +105,61 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
         }
       />
 
-      <section className="bg-[var(--bg)] py-16 lg:py-24">
-        <Container>
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-            {/* Image first in the DOM so it stacks above the text on mobile; lg:order keeps it on the right. */}
-            <Reveal delay={0.06} className="lg:order-2">
-              <div
-                className="relative overflow-hidden rounded-[var(--radius-lg)]"
-                style={{ aspectRatio: "3/2" }}
-              >
-                {imageSrc ? (
-                  <SiteImage
-                    src={imageSrc}
-                    alt={courseImageAlt(course.name)}
-                    fill
-                    sizes="(min-width: 1024px) 45vw, 90vw"
-                    preload
-                    className="object-cover object-center"
-                  />
-                ) : (
-                  <CourseArt
-                    courseId={course.id}
-                    tone={getCourseArtTone(course.id)}
-                    variant="detailed"
-                    className="h-full w-full"
-                  />
-                )}
-              </div>
-            </Reveal>
-
-            <Reveal className="lg:order-1">
-              <div>
-                {course.category && (
-                  <Badge variant="green" className="mb-4">
-                    {course.category}
-                  </Badge>
-                )}
-                {course.description && (
-                  <p className="text-[1.0625rem] leading-relaxed text-[var(--text-muted)]">
-                    {course.description}
-                  </p>
-                )}
-              </div>
-            </Reveal>
-          </div>
-        </Container>
-      </section>
+      <ReadMore
+        extra={extra ? (
+          <MarkdownContent className="md-prose-full" h1Offset={heading?.extraOffset}>{extra}</MarkdownContent>
+        ) : undefined}
+        image={
+          // Image first in the DOM so it stacks above the text on mobile.
+          <Reveal delay={0.06} className={`lg:order-2 ${HERO_REVEAL}`}>
+            <div
+              className="relative overflow-hidden rounded-[var(--radius-lg)]"
+              style={{ aspectRatio: "3/2" }}
+            >
+              {imageSrc ? (
+                <SiteImage
+                  src={imageSrc}
+                  alt={courseImageAlt(course.name)}
+                  fill
+                  sizes="(min-width: 1024px) 45vw, 90vw"
+                  preload
+                  className="object-cover object-center"
+                />
+              ) : (
+                <CourseArt
+                  courseId={course.id}
+                  tone={getCourseArtTone(course.id)}
+                  variant="detailed"
+                  className="h-full w-full"
+                />
+              )}
+            </div>
+          </Reveal>
+        }
+      >
+        {(course.category || course.description) && (
+          <Reveal className={HERO_REVEAL}>
+            {course.category && (
+              <Badge variant="green" className="mb-4">
+                {course.category}
+              </Badge>
+            )}
+            {course.description && (
+              <p className="text-[1.0625rem] leading-relaxed text-[var(--text-muted)]">
+                {course.description}
+              </p>
+            )}
+          </Reveal>
+        )}
+        {lead && (
+          <MarkdownContent
+            className={course.category || course.description ? "mt-5" : undefined}
+            h1Offset={heading?.leadOffset}
+          >
+            {lead}
+          </MarkdownContent>
+        )}
+      </ReadMore>
 
       <section className="bg-[var(--surface-alt)] py-16 lg:py-24">
         <Container>
@@ -208,17 +221,6 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
           </Reveal>
         </Container>
       </section>
-      {(lead || extra) && (
-        <section aria-labelledby="course-about" className="bg-[var(--bg)] py-16 lg:py-24">
-          <Container>
-            <div className="mx-auto max-w-3xl">
-              <h2 id="course-about" className="mb-6">About this course</h2>
-              {lead && <MarkdownContent>{lead}</MarkdownContent>}
-              {extra && <ReadMore><MarkdownContent>{extra}</MarkdownContent></ReadMore>}
-            </div>
-          </Container>
-        </section>
-      )}
     </>
   );
 }

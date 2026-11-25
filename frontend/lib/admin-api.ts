@@ -41,11 +41,12 @@ async function readDetail(res: Response): Promise<{ message: string; detail?: un
  * - No cookie → login page (proxy.ts normally catches this first).
  * - Backend 401 → the logout Route Handler, which clears the cookie and shows
  *   the "session expired" notice (Server Components can't modify cookies).
+ *   Server Actions that handle expiry in their own response can opt out.
  * - Everything else is returned as a result, never thrown.
  */
 export async function adminFetch<T>(
   path: string,
-  init: RequestInit = {},
+  { redirectOnUnauthorized = true, ...init }: RequestInit & { redirectOnUnauthorized?: boolean } = {},
 ): Promise<AdminResult<T>> {
   const token = await getAdminToken();
   if (!token) redirect(ADMIN_LOGIN_PATH);
@@ -66,7 +67,7 @@ export async function adminFetch<T>(
   }
 
   // redirect() throws, so it must stay outside the try/catch above.
-  if (res.status === 401) redirect(`${ADMIN_LOGOUT_PATH}?reason=expired`);
+  if (res.status === 401 && redirectOnUnauthorized) redirect(`${ADMIN_LOGOUT_PATH}?reason=expired`);
 
   if (!res.ok) {
     const { message, detail } = await readDetail(res);
