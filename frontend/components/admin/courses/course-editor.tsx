@@ -17,6 +17,8 @@ type FieldErrors = Partial<Values>;
 
 const SLUG_WARNING = "The old URL will automatically redirect (301) to the new one.";
 const SEARCH_REFRESH = "Changing the name or description refreshes the chatbot search data on save.";
+const SEO_CONTENT_MAX_LENGTH = 100_000;
+const characterCountFormat = new Intl.NumberFormat("en-US");
 
 function toValues(course: AdminCourseDetail): Values {
   return {
@@ -51,6 +53,11 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
   const courseName = values.name.trim() || saved.name;
   const preview = courseSearchSnippet({ ...values, name: courseName });
   const courseContent = useMemo(() => getCourseMarkdown(values.seo_content), [values.seo_content]);
+  const contentLength = useMemo(() => Array.from(values.seo_content).length, [values.seo_content]);
+  const contentTooLong = contentLength > SEO_CONTENT_MAX_LENGTH;
+  const contentError = contentTooLong
+    ? `Course content is too long. Shorten it to ${characterCountFormat.format(SEO_CONTENT_MAX_LENGTH)} characters or fewer before saving.`
+    : errors.seo_content;
 
   function change(field: CourseField, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
@@ -60,7 +67,7 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
   }
 
   async function save() {
-    if (saving || changedFields.length === 0) return;
+    if (saving || changedFields.length === 0 || contentTooLong) return;
     const changes: CoursePatch = {};
     for (const field of changedFields) {
       const value = values[field];
@@ -95,7 +102,7 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving || changedFields.length === 0) return;
+    if (saving || changedFields.length === 0 || contentTooLong) return;
     if (slugChanged) setConfirmSlug(true);
     else void save();
   }
@@ -173,12 +180,16 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
             title={courseName}
             value={values.seo_content}
             onChange={(value) => change("seo_content", value)}
-            error={errors.seo_content}
+            error={contentError}
             readOnly={saving}
             describedBy={`${id}-content-feedback`}
             courseContent={courseContent}
           />
           <div id={`${id}-content-feedback`} className="text-sm">
+            <p className={cn("mb-2 tabular-nums", contentTooLong ? "font-medium text-[var(--error)]" : "text-[var(--text-muted)]")}>
+              {characterCountFormat.format(contentLength)} / {characterCountFormat.format(SEO_CONTENT_MAX_LENGTH)} characters
+            </p>
+            {contentError && <p className="mb-2 text-[var(--error)]" role="alert">{contentError}</p>}
             <div role="status" className="mb-2 space-y-1 wrap-anywhere">
               <p className="font-medium text-[var(--text)]">
                 This page&apos;s H1: <bdi>{courseContent.heading?.text ?? courseName}</bdi>
@@ -194,7 +205,6 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
             </div>
             <p className="text-[var(--text-muted)]">Use <code>#</code> once for the page H1 and <code>##</code> for section headings.</p>
             <p className="text-[var(--text-muted)]">Use Insert Read More where the public page should start collapsing the content.</p>
-            {errors.seo_content && <p className="mt-1 text-[var(--error)]" role="alert">{errors.seo_content}</p>}
           </div>
         </section>
 
@@ -202,7 +212,7 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
         <div role="status" className="font-medium text-[var(--green-700)]">
           {success ? "Course saved." : null}
         </div>
-        <Button type="submit" className="justify-self-start" loading={saving} disabled={changedFields.length === 0}>
+        <Button type="submit" className="justify-self-start" loading={saving} disabled={changedFields.length === 0 || contentTooLong}>
           {saving ? "Saving…" : "Save changes"}
         </Button>
       </form>

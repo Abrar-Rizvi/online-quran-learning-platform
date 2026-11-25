@@ -225,6 +225,20 @@ class CourseUpdateTest(unittest.TestCase):
             })
             self.assertEqual(owner_audit.after, {"meta_title": None, "seo_content": None})
 
+    def test_admin_course_patch_accepts_long_seo_content(self):
+        course_id = self.commit_course_fixture(self.make_course())
+        path = f"/admin/courses/{course_id}"
+        headers = {"Authorization": f"Bearer {create_access_token(ACTOR.name)}"}
+        markdown = "## Course overview\n\nLearn with **practice** and [examples](/courses).\n\n"
+        with TestClient(app) as client:
+            for length in (20_001, 100_000):
+                with self.subTest(length=length):
+                    content = markdown + "📖" * (length - len(markdown))
+                    updated = client.patch(path, headers=headers, json={"seo_content": content})
+                    self.assertEqual(updated.status_code, 200, updated.text)
+                    self.assertEqual(updated.json()["seo_content"], content)
+                    self.assertEqual(client.get(path, headers=headers).json()["seo_content"], content)
+
     def test_admin_course_patch_rejects_invalid_fields(self):
         course_id = self.commit_course_fixture(self.make_course())
         headers = {"Authorization": f"Bearer {create_access_token(ACTOR.name)}"}
@@ -234,7 +248,7 @@ class CourseUpdateTest(unittest.TestCase):
             self.assertEqual(client.patch(missing_path, json={}, headers=headers).status_code, 404)
             for payload in (
                 {"meta_title": "x" * 256}, {"meta_description": "x" * 501},
-                {"seo_content": "x" * 20001}, {"course_plans": []}, {"fee": 10},
+                {"seo_content": "x" * 100_001}, {"course_plans": []}, {"fee": 10},
                 {"currency": "USD"},
             ):
                 with self.subTest(field=next(iter(payload))):

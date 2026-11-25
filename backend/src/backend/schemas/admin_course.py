@@ -32,7 +32,7 @@ class AdminCoursePatch(SQLModel):
     slug: str | None = Field(default=None, max_length=COURSE_SLUG_MAX_LENGTH)
     meta_title: str | None = Field(default=None, max_length=255)
     meta_description: str | None = Field(default=None, max_length=500)
-    seo_content: str | None = Field(default=None, max_length=20000)
+    seo_content: str | None = Field(default=None, max_length=100_000)
 
     @field_validator("name")
     @classmethod
