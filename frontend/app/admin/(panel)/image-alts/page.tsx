@@ -5,8 +5,8 @@ import { ImageAltTable, type ImageAltRow } from "@/components/admin/image-alts/i
 import { adminFetch } from "@/lib/admin-api";
 import { fetchCourses } from "@/lib/api";
 import { COURSE_IMAGE_FILES } from "@/lib/course-images.generated";
-import { getCourseImage, isPublicCourse } from "@/lib/courses";
-import type { AdminImageAlt } from "@/lib/image-alts";
+import { COURSE_IMAGE_DIR, getCourseImage, isPublicCourse } from "@/lib/courses";
+import { localImagePath, type AdminImageAlt } from "@/lib/image-alts";
 import { courseImageAlt, SITE_IMAGES } from "@/lib/site-images";
 
 export const metadata: Metadata = { title: "Image alt text" };
@@ -22,11 +22,12 @@ export default async function ImageAltsPage() {
     known.set(src, { path: src, defaultAlt: alt });
   }
   for (const file of COURSE_IMAGE_FILES) {
-    const path = `/images/courses/${encodeURIComponent(file)}`;
+    const path = `${COURSE_IMAGE_DIR}${encodeURIComponent(file)}`;
     known.set(path, { path, defaultAlt: null });
   }
   for (const course of (await fetchCourses()).filter(isPublicCourse)) {
-    const path = getCourseImage(course.slug);
+    const src = getCourseImage(course);
+    const path = src && localImagePath(src);
     if (path && known.get(path)?.defaultAlt == null) {
       known.set(path, { path, defaultAlt: courseImageAlt(course.name) });
     }

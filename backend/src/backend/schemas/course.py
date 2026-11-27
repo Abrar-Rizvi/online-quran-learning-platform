@@ -12,6 +12,7 @@ class CourseRead(SQLModel):
     slug: str
     description: Optional[str] = None
     category: Optional[str] = None
+    image_path: str | None = None
 
 
 class CoursePlanRead(SQLModel):

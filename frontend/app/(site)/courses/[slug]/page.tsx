@@ -60,7 +60,7 @@ export async function generateMetadata({
     metadata.openGraph = { ...metadata.openGraph, title: customTitle };
     metadata.twitter = { ...metadata.twitter, title: customTitle };
   }
-  const imageSrc = getCourseImage(course.slug);
+  const imageSrc = getCourseImage(course);
   if (!imageSrc) return metadata;
   // The optimizer's 1200px version, not the raw file: some course photos exceed X's 5 MB card limit.
   const images = [{
@@ -80,7 +80,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
 
   if (!course) notFound();
 
-  const imageSrc = getCourseImage(course.slug);
+  const imageSrc = getCourseImage(course);
   const { lead, extra, heading } = getCourseMarkdown(course.seo_content ?? "");
   const plans = course.course_plans.map((plan) => ({
     daysPerWeek: plan.days_per_week,

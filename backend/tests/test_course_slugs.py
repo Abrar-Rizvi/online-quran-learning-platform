@@ -59,6 +59,7 @@ class CourseSlugTest(unittest.TestCase):
             slug=f"stored-slug-{suffix}",
             description="Test course",
             category="Test category",
+            image_path="/images/courses/fixture.jpg",
             embedding=vector,
             meta_title="Course page title",
             meta_description="Course page description",
@@ -86,6 +87,7 @@ class CourseSlugTest(unittest.TestCase):
             self.assertEqual(item, {
                 "id": course.id, "name": course.name, "slug": course.slug,
                 "description": course.description, "category": course.category,
+                "image_path": course.image_path,
             })
 
             detail = client.get(f"/courses/{course.id}")

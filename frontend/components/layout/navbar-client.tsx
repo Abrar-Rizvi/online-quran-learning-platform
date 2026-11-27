@@ -8,9 +8,9 @@ import { Button } from "@/components/ui";
 import { navLinks, ctaLinks } from "@/lib/site-config";
 import { Logo } from "./logo";
 import { MobileMenu } from "./mobile-menu";
-import { CoursesNavItem, type CourseNavLink } from "./courses-nav-item";
+import { CoursesNavItem } from "./courses-nav-item";
 
-export function NavbarClient({ qaidaLink }: { qaidaLink?: CourseNavLink }) {
+export function NavbarClient() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -56,7 +56,6 @@ export function NavbarClient({ qaidaLink }: { qaidaLink?: CourseNavLink }) {
                 <CoursesNavItem
                   key={`${link.href}-${pathname}`}
                   variant="desktop"
-                  qaidaLink={qaidaLink}
                 />
               ) : (
                 <Link
@@ -107,7 +106,6 @@ export function NavbarClient({ qaidaLink }: { qaidaLink?: CourseNavLink }) {
         isOpen={menuOpen}
         onClose={() => setMenuOpen(false)}
         triggerRef={menuButtonRef}
-        qaidaLink={qaidaLink}
       />
     </>
   );

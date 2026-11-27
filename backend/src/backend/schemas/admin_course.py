@@ -1,6 +1,7 @@
 from pydantic import ConfigDict, field_validator
 from sqlmodel import Field, SQLModel
 
+from ..course_images import COURSE_IMAGE_PATH_MAX_LENGTH, validate_course_image_path
 from ..course_slugs import COURSE_SLUG_MAX_LENGTH, validate_course_slug
 
 
@@ -11,6 +12,7 @@ class _AdminCourseRead(SQLModel):
     name: str
     slug: str
     category: str | None
+    image_path: str | None
     meta_title: str | None
     meta_description: str | None
 
@@ -30,6 +32,7 @@ class AdminCoursePatch(SQLModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     slug: str | None = Field(default=None, max_length=COURSE_SLUG_MAX_LENGTH)
+    image_path: str | None = Field(default=None, max_length=COURSE_IMAGE_PATH_MAX_LENGTH)
     meta_title: str | None = Field(default=None, max_length=255)
     meta_description: str | None = Field(default=None, max_length=500)
     seo_content: str | None = Field(default=None, max_length=100_000)
@@ -47,3 +50,8 @@ class AdminCoursePatch(SQLModel):
         if value is None:
             raise ValueError("Course slug cannot be null.")
         return validate_course_slug(value)
+
+    @field_validator("image_path")
+    @classmethod
+    def validate_image_path(cls, value: str | None) -> str | None:
+        return validate_course_image_path(value)

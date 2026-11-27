@@ -6,10 +6,15 @@ import { ContentEditor } from "@/components/admin/blog/content-editor";
 import { cardClasses, WidgetTitle } from "@/components/admin/dashboard/widget";
 import { ConfirmDialog } from "@/components/admin/ui/confirm-dialog";
 import { Button, FormField, inputClasses } from "@/components/ui";
+import { CourseArt } from "@/components/courses/course-art";
+import { SiteImage } from "@/components/site-image";
 import { COURSE_FIELDS, type AdminCourseDetail, type CourseField, type CoursePatch } from "@/lib/admin-courses";
 import { getCourseMarkdown } from "@/lib/course-markdown";
 import { courseSearchSnippet } from "@/lib/course-seo";
+import { COURSE_IMAGE_DIR, getCourseArtTone, getCourseImage } from "@/lib/courses";
+import { localImagePath } from "@/lib/image-alts";
 import { SITE_URL } from "@/lib/seo";
+import { courseImageAlt } from "@/lib/site-images";
 import { cn } from "@/lib/utils";
 
 type Values = Record<CourseField, string>;
@@ -25,6 +30,7 @@ function toValues(course: AdminCourseDetail): Values {
     name: course.name,
     description: course.description ?? "",
     slug: course.slug,
+    image_path: course.image_path ?? "",
     meta_title: course.meta_title ?? "",
     meta_description: course.meta_description ?? "",
     seo_content: course.seo_content ?? "",
@@ -35,9 +41,21 @@ const FIELD_LABELS = {
   name: "Name",
   description: "Description",
   slug: "Slug",
+  image_path: "Image path",
   meta_title: "Meta title",
   meta_description: "Meta description",
 };
+
+function CourseImagePreview({ src, name }: { src: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <p role="status" className="font-medium text-[var(--warning)]">This file was not found. Make sure it is deployed before saving.</p>;
+  }
+  return (
+    <SiteImage unoptimized src={src} alt={courseImageAlt(name)} width={176} height={117}
+      onError={() => setFailed(true)} className="aspect-[3/2] w-44 max-w-full rounded-[var(--radius-sm)] object-cover" />
+  );
+}
 
 export function CourseEditor({ course }: { course: AdminCourseDetail }) {
   const [saved, setSaved] = useState(() => toValues(course));
@@ -51,6 +69,10 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
   const slugChanged = values.slug !== saved.slug;
   const changedFields = COURSE_FIELDS.filter((key) => values[key] !== saved[key]);
   const courseName = values.name.trim() || saved.name;
+  const imagePath = values.image_path.trim() ? values.image_path : null;
+  const courseImage = getCourseImage({ slug: values.slug, image_path: imagePath });
+  const previewImage = courseImage?.startsWith(COURSE_IMAGE_DIR) ? localImagePath(courseImage) : undefined;
+  const canPreviewImage = previewImage?.startsWith(COURSE_IMAGE_DIR) && !/%(?:2f|5c|25)/i.test(previewImage);
   const preview = courseSearchSnippet({ ...values, name: courseName });
   const courseContent = useMemo(() => getCourseMarkdown(values.seo_content), [values.seo_content]);
   const contentLength = useMemo(() => Array.from(values.seo_content).length, [values.seo_content]);
@@ -115,7 +137,7 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
       id: fieldId,
       value: values[key],
       onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => change(key, event.target.value),
-      dir: key === "slug" ? "ltr" : "auto",
+      dir: key === "slug" || key === "image_path" ? "ltr" : "auto",
       readOnly: saving,
       "aria-required": key === "name" || key === "slug" ? true : undefined,
       "aria-invalid": Boolean(fieldError),
@@ -126,7 +148,9 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
         {key === "description" || key === "meta_description" ? (
           <textarea {...props} rows={key === "description" ? 4 : 3} className={cn(inputClasses, "h-auto resize-y py-3")} />
         ) : (
-          <input {...props} className={inputClasses} spellCheck={key === "slug" ? false : undefined} />
+          <input {...props} className={inputClasses}
+            placeholder={key === "image_path" ? "/images/courses/example.webp" : undefined}
+            spellCheck={key === "slug" || key === "image_path" ? false : undefined} />
         )}
         <div id={`${fieldId}-feedback`} className="mt-1.5 space-y-1 text-sm">
           {(hint || target) && (
@@ -160,6 +184,15 @@ export function CourseEditor({ course }: { course: AdminCourseDetail }) {
           {field("name")}
           {field("description")}
           {field("slug", { hint: "Use lowercase letters, numbers, and single hyphens." })}
+          {field("image_path", {
+            hint: "The image file must already be in public/images/courses/ and deployed. Changing the slug does not affect this image. Clear this field to use the automatic match.",
+          })}
+          <div className="flex flex-wrap items-start gap-x-3 gap-y-2 text-sm text-[var(--text-muted)]">
+            {canPreviewImage && previewImage && <CourseImagePreview key={previewImage} src={previewImage} name={courseName} />}
+            {!courseImage && <CourseArt courseId={course.id} tone={getCourseArtTone(course.id)}
+              className="aspect-[3/2] w-44 max-w-full rounded-[var(--radius-sm)]" />}
+            <p>{imagePath ? "Using image path" : courseImage ? "Using automatic match by slug" : "No image (pattern tile)"}</p>
+          </div>
         </section>
 
         <section className={cn(cardClasses, "grid min-w-0 gap-5")}>

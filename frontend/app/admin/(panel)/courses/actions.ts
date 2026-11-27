@@ -25,7 +25,7 @@ export async function saveCourse(id: number, changes: CoursePatch): Promise<Save
   if (res.ok) {
     revalidatePath("/admin/courses");
     updateTag(courseDetailTag(id));
-    if ("slug" in body || "name" in body || "description" in body) updateTag(COURSE_CATALOG_TAG);
+    if ("slug" in body || "name" in body || "description" in body || "image_path" in body) updateTag(COURSE_CATALOG_TAG);
     revalidatePath(`/courses/${res.data.slug}`);
     return { ok: true, course: res.data };
   }

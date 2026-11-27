@@ -11,7 +11,7 @@ from .embeddings import embed_query
 from .models import Course
 from .schemas import CourseRead
 
-LIST_COLUMNS = (Course.id, Course.name, Course.slug, Course.description, Course.category)
+LIST_COLUMNS = (Course.id, Course.name, Course.slug, Course.description, Course.category, Course.image_path)
 
 
 def find_similar_courses(

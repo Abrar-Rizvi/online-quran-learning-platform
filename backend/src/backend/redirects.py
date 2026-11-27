@@ -1,6 +1,7 @@
 """Validation and transactional writes for permanent redirects."""
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from urllib.parse import quote, unquote
 
@@ -66,7 +67,16 @@ def audit_redirect_addition(
         session, actor, "redirect.create", "redirect", str(redirect.id),
         None, snapshot(redirect), request,
     )
-    for row, previous_target in result.retargeted:
+    _audit_redirect_updates(session, actor, result.retargeted, request)
+
+
+def _audit_redirect_updates(
+    session: Session,
+    actor: AdminPrincipal,
+    retargeted: list[tuple[Redirect, str]],
+    request: Request | None,
+) -> None:
+    for row, previous_target in retargeted:
         after = snapshot(row)
         write_audit(
             session, actor, "redirect.update", "redirect", str(row.id),
@@ -83,16 +93,32 @@ def lock_redirects(session: Session) -> None:
 def _resolve_destinations(destinations: dict[str, str]) -> dict[str, str]:
     resolved: dict[str, str] = {}
     for source in destinations:
-        seen: set[str] = set()
+        seen: dict[str, None] = {}
         current = source
         while current in destinations and current not in resolved:
             if current in seen:
-                raise HTTPException(status_code=422, detail="Redirects must not form a loop.")
-            seen.add(current)
+                path = list(seen)
+                cycle = " → ".join([*path[path.index(current):], current])
+                raise HTTPException(
+                    status_code=422, detail=f"Redirects must not form a loop. Conflict: {cycle}",
+                )
+            seen[current] = None
             current = destinations[current]
         destination = resolved.get(current, current)
         resolved.update(dict.fromkeys(seen, destination))
     return resolved
+
+
+def _retarget_redirects(
+    rows: Iterable[Redirect], resolved: dict[str, str],
+) -> list[tuple[Redirect, str]]:
+    retargeted = []
+    for row in rows:
+        destination = resolved[row.from_path]
+        if row.to_path != destination:
+            retargeted.append((row, row.to_path))
+            row.to_path = destination
+    return retargeted
 
 
 def add_redirect(
@@ -116,14 +142,43 @@ def add_redirect(
     destinations[source] = target
     resolved = _resolve_destinations(destinations)
 
-    retargeted = []
-    for row in existing:
-        destination = resolved[row.from_path]
-        if row.to_path != destination:
-            retargeted.append((row, row.to_path))
-            row.to_path = destination
-
+    retargeted = _retarget_redirects(existing, resolved)
     redirect = Redirect(from_path=source, to_path=resolved[source], created_by=created_by)
     session.add(redirect)
     session.flush()
     return AddedRedirect(redirect, retargeted)
+
+
+def redirect_course_slug(
+    session: Session,
+    old_slug: str,
+    new_slug: str,
+    actor: AdminPrincipal,
+    request: Request | None = None,
+) -> None:
+    """Move the redirects for a course to its new live URL. The caller commits."""
+    source, target = f"/courses/{old_slug}", f"/courses/{new_slug}"
+    lock_redirects(session)
+    rows = session.exec(select(Redirect).execution_options(populate_existing=True)).all()
+    existing = {row.from_path: row for row in rows}
+    obsolete = existing.pop(target, None)
+
+    destinations = {path: row.to_path for path, row in existing.items()}
+    destinations[source] = target
+    resolved = _resolve_destinations(destinations)
+
+    if obsolete is not None:
+        write_audit(
+            session, actor, "redirect.delete", "redirect", str(obsolete.id),
+            snapshot(obsolete), None, request,
+        )
+        session.delete(obsolete)
+
+    retargeted = _retarget_redirects(existing.values(), resolved)
+    if source in existing:
+        _audit_redirect_updates(session, actor, retargeted, request)
+    else:
+        redirect = Redirect(from_path=source, to_path=target, created_by=actor.name)
+        session.add(redirect)
+        session.flush()
+        audit_redirect_addition(session, actor, AddedRedirect(redirect, retargeted), request)

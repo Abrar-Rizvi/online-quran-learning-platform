@@ -65,8 +65,9 @@ DevOps / deployment monitoring, or anyone verifying the server is alive.
 2. Endpoint: GET /courses
 
 Purpose:
-Returns a list of all courses (id, name, slug, description, category) from the
-database. This powers the course listing page so visitors can see what
+Returns a list of all courses (id, name, slug, description, category, image_path)
+from the database. A null image_path uses the frontend's automatic image match.
+This powers the course listing page so visitors can see what
 courses are offered. Embeddings are not returned.
 
 Used By:
@@ -81,7 +82,8 @@ Searches the course catalog semantically. Required query param `q` is
 embedded (Gemini) and matched against the stored course vectors with
 pgvector cosine distance, so results are the most relevant courses rather
 than only exact name matches. Optional `limit` (default 10, 1-50) caps the
-number of results. Returns the same CourseRead shape as GET /courses.
+number of results. Returns the same CourseRead shape as GET /courses, including
+the nullable image_path.
 Returns 422 if `q` is missing, blank, or longer than 100 characters after
 trimming. Rate limited per client IP (about 30 requests per minute, sliding
 window, in-memory per process): over the limit returns 429 {"detail": "Too
@@ -105,7 +107,7 @@ Next.js frontend course listing page (search box).
 
 Purpose:
 Returns CourseDetail with id, name, slug, description, category, the nullable
-meta_title, meta_description and seo_content (Markdown), and all of its
+image_path, meta_title, meta_description and seo_content (Markdown), and all of its
 course plans (id, days_per_week, fee, currency). An empty or null SEO field
 means the frontend should use its code default. This lets
 the frontend show a specific course and the pricing/plan options available
@@ -807,8 +809,8 @@ Role: owner or seo_editor.
 41. Endpoint: GET /admin/courses
 
 Purpose:
-Lists courses by ID. Each row contains id, name, slug, category, meta_title,
-meta_description, and has_seo_content (boolean).
+Lists courses by ID. Each row contains id, name, slug, category, image_path,
+meta_title, meta_description, and has_seo_content (boolean).
 
 Auth:
 Role: owner or seo_editor.
@@ -818,8 +820,8 @@ Role: owner or seo_editor.
 42. Endpoint: GET /admin/courses/{course_id}
 
 Purpose:
-Returns id, name, slug, category, description, meta_title, meta_description,
-and seo_content (Markdown). Returns 404 for an unknown course. The admin
+Returns id, name, slug, category, description, image_path, meta_title,
+meta_description, and seo_content (Markdown). Returns 404 for an unknown course. The admin
 course responses omit plans, fees, and currency.
 
 Auth:
@@ -833,9 +835,13 @@ Purpose:
 Updates the supplied fields and returns the same shape as endpoint 42.
 Accepts name (nonblank, up to 255 characters), description (nullable), slug
 (up to 100 lowercase letters or digits with single hyphens between words),
-meta_title (255 characters), meta_description (500 characters), and
-seo_content (20,000 characters of Markdown). Empty strings and null clear
-SEO fields. Invalid values or unsupported fields return 422. An unknown ID
+image_path (nullable, up to 255 characters), meta_title (255 characters),
+meta_description (500 characters), and seo_content (20,000 characters of Markdown).
+Empty strings and null clear SEO fields or image_path. A non-empty image_path must
+start with /images/courses/ and end in .webp, .jpg, .jpeg, or .png (case-insensitive).
+It cannot contain traversal, backslashes, double slashes, a query, a fragment, or
+a scheme or host. The file should already be deployed. An image-only edit does
+not regenerate the embedding. Invalid values or unsupported fields return 422. An unknown ID
 returns 404 and a duplicate slug or name returns 409. Slug changes create a
 permanent 301 redirect from the previous URL. Name or description changes
 refresh the search embedding. If that fails, the update rolls back and

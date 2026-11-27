@@ -17,14 +17,8 @@ const CATEGORY_LINKS: { label: string; category: Exclude<CategoryKey, "all"> }[]
   { label: "Language Courses", category: "language" },
 ];
 
-export interface CourseNavLink {
-  label: string;
-  href: string;
-}
-
 interface CoursesNavItemProps {
   variant: "desktop" | "mobile";
-  qaidaLink?: CourseNavLink;
   /** Mobile only: also close the outer mobile menu drawer when a link is chosen. */
   onNavigate?: () => void;
 }
@@ -69,7 +63,7 @@ function ArrowRightIcon({ className }: { className?: string }) {
   );
 }
 
-export function CoursesNavItem({ variant, onNavigate, qaidaLink }: CoursesNavItemProps) {
+export function CoursesNavItem({ variant, onNavigate }: CoursesNavItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -169,13 +163,6 @@ export function CoursesNavItem({ variant, onNavigate, qaidaLink }: CoursesNavIte
             </Link>
           </li>
         ))}
-        {qaidaLink && (
-          <li role="none">
-            <Link href={qaidaLink.href} role="menuitem" onClick={handleLinkClick} className={linkClasses}>
-              {qaidaLink.label}
-            </Link>
-          </li>
-        )}
       </ul>
 
       <div className="my-1 h-px bg-[var(--border)]" />

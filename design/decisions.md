@@ -475,3 +475,15 @@
 - Scope: course detail pages only. Blog posts and any future `pages` keep their current H1 behavior (a `#` inside their content is rendered as H2) until decided separately.
 - Admin editor shows a small indicator: "This page's H1: <course name>" or "This page's H1: <content heading text>", plus a note when more than one `#` exists ("Only the first heading is H1; the others become H2"), and a warning (not a block) when the H1 sits after the [[read-more]] marker (hidden part).
 - Course name stays unchanged everywhere else (breadcrumb, cards, navbar, chatbot, metadata). No data model or migration change.
+
+## 2026-11-27 — Course photos have a stored image path
+
+- Owners and SEO editors can set or clear a local course image path and preview it before saving. A saved path stays with the course when its slug changes. Clearing it restores the existing slug match and patterned fallback. Alt-text overrides still follow the image path.
+- The migration adds a nullable column. The separate backfill fills empty paths from existing matches when the files are present on disk.
+- Production rollout order
+  1. Create a Neon backup branch.
+  2. Deploy any new image files.
+  3. Apply the database migration.
+  4. Deploy the application code.
+  5. Run `uv run python -m scripts.backfill_course_images --dry-run` from `backend/` and review the output. Run the same command without `--dry-run` to apply it.
+  6. Verify the course photos and editor on the live site.

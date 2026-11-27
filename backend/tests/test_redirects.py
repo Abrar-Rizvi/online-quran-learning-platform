@@ -112,7 +112,10 @@ class RedirectTest(unittest.TestCase):
         original = self._create(a, b)
         reverse = self._post(b, a)
         self.assertEqual(reverse.status_code, 422, reverse.text)
-        self.assertIn("loop", reverse.json()["detail"])
+        detail = reverse.json()["detail"]
+        self.assertIn("Redirects must not form a loop.", detail)
+        self.assertIn(a, detail)
+        self.assertIn(b, detail)
         self._create(b, c)
         self.assertEqual(self._create(d, a)["to_path"], c)
         cycle = self._post(c, d)

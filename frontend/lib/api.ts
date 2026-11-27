@@ -16,6 +16,7 @@ export interface CourseListItem {
   slug: string;
   description: string | null;
   category: string | null;
+  image_path: string | null;
 }
 
 export interface FeePlanItem {

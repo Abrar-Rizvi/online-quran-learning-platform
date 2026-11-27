@@ -5,8 +5,8 @@ import { getCourseArtTone, getCourseImage } from "@/lib/courses";
 import { courseImageAlt } from "@/lib/site-images";
 import type { CourseListItem } from "@/lib/api";
 
-function CourseImage({ course, slug }: { course: CourseListItem; slug: string | null }) {
-  const src = slug ? getCourseImage(slug) : undefined;
+function CourseImage({ course }: { course: CourseListItem }) {
+  const src = getCourseImage(course);
 
   if (!src) {
     return (
@@ -38,7 +38,7 @@ export function CourseCard({ course }: { course: CourseListItem }) {
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] transition-[translate,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
-      <CourseImage course={course} slug={slug} />
+      <CourseImage course={course} />
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <h3 className="text-lg font-bold" style={{ fontFamily: "var(--font-body)" }}>

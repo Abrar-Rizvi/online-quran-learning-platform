@@ -11,19 +11,18 @@ import {
   ctaLinks,
   getContactConfig,
 } from "@/lib/site-config";
-import { CoursesNavItem, type CourseNavLink } from "./courses-nav-item";
+import { CoursesNavItem } from "./courses-nav-item";
 
 interface MobileMenuProps {
   isOpen: boolean;
   onClose: () => void;
   triggerRef: React.RefObject<HTMLButtonElement | null>;
-  qaidaLink?: CourseNavLink;
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function MobileMenu({ isOpen, onClose, triggerRef, qaidaLink }: MobileMenuProps) {
+export function MobileMenu({ isOpen, onClose, triggerRef }: MobileMenuProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const contact = getContactConfig();
@@ -123,7 +122,6 @@ export function MobileMenu({ isOpen, onClose, triggerRef, qaidaLink }: MobileMen
                   key={`${link.href}-${pathname}`}
                   variant="mobile"
                   onNavigate={onClose}
-                  qaidaLink={qaidaLink}
                 />
               ) : (
                 <Link

@@ -17,7 +17,7 @@ router = APIRouter(
 )
 
 _SUMMARY_COLUMNS = (
-    Course.id, Course.name, Course.slug, Course.category,
+    Course.id, Course.name, Course.slug, Course.category, Course.image_path,
     Course.meta_title, Course.meta_description,
 )
 

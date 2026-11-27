@@ -9,7 +9,7 @@ from .auth import AdminPrincipal
 from .course_slugs import validate_course_slug
 from .embeddings import EmbeddingUnavailable, embed_one
 from .models import Course
-from .redirects import add_redirect, audit_redirect_addition
+from .redirects import redirect_course_slug
 
 
 class _Unset:
@@ -26,6 +26,7 @@ def update_course(
     name: str | None = None,
     description: str | None | _Unset = _UNSET,
     slug: str | None = None,
+    image_path: str | None | _Unset = _UNSET,
     meta_title: str | None | _Unset = _UNSET,
     meta_description: str | None | _Unset = _UNSET,
     seo_content: str | None | _Unset = _UNSET,
@@ -44,6 +45,7 @@ def update_course(
         "name": name if name is not None else _UNSET,
         "description": description,
         "slug": slug if slug is not None else _UNSET,
+        "image_path": image_path,
         "meta_title": None if meta_title == "" else meta_title,
         "meta_description": None if meta_description == "" else meta_description,
         "seo_content": None if seo_content == "" else seo_content,
@@ -78,13 +80,7 @@ def update_course(
             session.flush()
 
             if "slug" in changes:
-                destination = f"/courses/{course.slug}"
-                result = add_redirect(
-                    session, f"/courses/{before['slug']}", destination, actor.name,
-                )
-                if result.redirect.to_path != destination:
-                    raise HTTPException(status_code=409, detail="The destination course URL already redirects")
-                audit_redirect_addition(session, actor, result)
+                redirect_course_slug(session, before["slug"], course.slug, actor, request)
 
             write_audit(
                 session, actor, "course.update", "course", str(course_id),

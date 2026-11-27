@@ -1,15 +1,12 @@
 import { fetchCoursesOrThrow, type CourseListItem } from "@/lib/api";
 import { COURSE_IMAGE_FILES } from "@/lib/course-images.generated";
+import courseImageOverrides from "@/lib/course-image-overrides.json";
 
 export const NOORANI_QAIDA_SLUG = "noorani-qaida-course";
 export const LEGACY_QAIDA_SLUG = "qaida-for-beginners";
 
-/** Local image overrides keyed by course slug (the API has no image field). */
-const COURSE_IMAGES: ReadonlyMap<string, string> = new Map([
-  [NOORANI_QAIDA_SLUG, "/images/courses/qaida.jpg"],
-  ["quran-recitation", "/images/courses/quran.jpg"],
-  ["quran-memorization", "/images/courses/memorization.jpg"],
-]);
+/** Legacy local overrides keyed by course slug. Also used by the backfill script. */
+const COURSE_IMAGES: ReadonlyMap<string, string> = new Map(Object.entries(courseImageOverrides));
 
 export function findCourseBySlug(
   courses: CourseListItem[],
@@ -22,7 +19,7 @@ export function findNooraniQaidaCourse(courses: CourseListItem[]): CourseListIte
   return findCourseBySlug(courses, NOORANI_QAIDA_SLUG) ?? findCourseBySlug(courses, LEGACY_QAIDA_SLUG);
 }
 
-const COURSE_IMAGE_DIR = "/images/courses/";
+export const COURSE_IMAGE_DIR = "/images/courses/";
 
 /** Image files keyed by normalized basename; the first file (sorted) wins on a duplicate key. */
 const COURSE_IMAGES_BY_KEY: ReadonlyMap<string, string> = (() => {
@@ -38,10 +35,11 @@ const COURSE_IMAGES_BY_KEY: ReadonlyMap<string, string> = (() => {
 })();
 
 /**
- * Look up the explicit override first, then a local image whose normalized
- * basename matches the stored slug. Undefined uses the artwork fallback.
+ * Use the saved path first, then the legacy override or filename match by slug.
+ * Undefined uses the artwork fallback.
  */
-export function getCourseImage(slug: string): string | undefined {
+export function getCourseImage({ slug, image_path }: Pick<CourseListItem, "slug" | "image_path">): string | undefined {
+  if (image_path) return image_path;
   const imageSlug = slug === LEGACY_QAIDA_SLUG ? NOORANI_QAIDA_SLUG : slug;
   return COURSE_IMAGES.get(imageSlug) ?? COURSE_IMAGES_BY_KEY.get(slug);
 }
